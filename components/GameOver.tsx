@@ -5,9 +5,27 @@ interface GameOverProps {
   onRestart: () => void;
   highScore: number;
   onHelp: () => void;
+  isMuted: boolean;
+  onToggleMute: () => void;
 }
 
-const GameOver: React.FC<GameOverProps> = ({ score, onRestart, highScore, onHelp }) => {
+const MuteIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <line x1="23" y1="9" x2="17" y2="15"></line>
+        <line x1="17" y1="9" x2="23" y2="15"></line>
+    </svg>
+);
+
+const UnmuteIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+    </svg>
+);
+
+const GameOver: React.FC<GameOverProps> = ({ score, onRestart, highScore, onHelp, isMuted, onToggleMute }) => {
   const isNewHighScore = score > 0 && score === highScore;
 
   useEffect(() => {
@@ -31,6 +49,14 @@ const GameOver: React.FC<GameOverProps> = ({ score, onRestart, highScore, onHelp
         aria-label="How to play"
       >
         ?
+      </button>
+
+      <button
+        onClick={onToggleMute}
+        className="absolute bottom-4 left-4 w-12 h-12 flex items-center justify-center bg-slate-700/50 hover:bg-slate-600/70 border-2 border-white/20 rounded-full text-white transition-all z-10"
+        aria-label={isMuted ? "Unmute sound" : "Mute sound"}
+      >
+        {isMuted ? <MuteIcon /> : <UnmuteIcon />}
       </button>
 
       <h1 className="text-7xl md:text-9xl font-black tracking-tighter text-white" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.4)' }}>

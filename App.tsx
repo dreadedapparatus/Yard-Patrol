@@ -6,6 +6,7 @@ import HelpModal from './components/HelpModal';
 import RotateDeviceOverlay from './components/RotateDeviceOverlay';
 import type { GameState } from './types';
 import { GAME_WIDTH, GAME_HEIGHT } from './constants';
+import { initAudio, setAudioMuted } from './components/audio';
 
 function App() {
   const [gameState, setGameState] = useState<GameState>('menu');
@@ -13,12 +14,19 @@ function App() {
   const [highScore, setHighScore] = useState(0);
   const [scale, setScale] = useState(1);
   const [isHelpVisible, setIsHelpVisible] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const gameContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const storedHighScore = localStorage.getItem('yardPatrolHighScore');
     if (storedHighScore) {
       setHighScore(parseInt(storedHighScore, 10));
+    }
+    const storedMutePref = localStorage.getItem('yardPatrolMuted');
+    if (storedMutePref) {
+        const muted = storedMutePref === 'true';
+        setIsMuted(muted);
+        setAudioMuted(muted);
     }
   }, []);
 
@@ -60,6 +68,7 @@ function App() {
   }, []);
 
   const startGame = useCallback(() => {
+    initAudio(); // Initialize audio on the first user interaction
     setScore(0);
     setGameState('playing');
     enterFullscreen();
@@ -76,6 +85,15 @@ function App() {
   
   const openHelp = () => setIsHelpVisible(true);
   const closeHelp = () => setIsHelpVisible(false);
+
+  const toggleMute = useCallback(() => {
+    setIsMuted(prev => {
+      const newMutedState = !prev;
+      setAudioMuted(newMutedState);
+      localStorage.setItem('yardPatrolMuted', newMutedState.toString());
+      return newMutedState;
+    });
+  }, []);
 
   return (
     <main ref={gameContainerRef} className="bg-slate-800 w-screen h-screen flex items-center justify-center font-sans text-white lg:p-4 overflow-hidden">
@@ -95,8 +113,8 @@ function App() {
               onGameOver={handleGameOver} 
               gameState={gameState} 
             />
-            {gameState === 'menu' && <StartMenu onStart={startGame} highScore={highScore} onHelp={openHelp} />}
-            {gameState === 'gameOver' && <GameOver score={score} onRestart={startGame} highScore={highScore} onHelp={openHelp} />}
+            {gameState === 'menu' && <StartMenu onStart={startGame} highScore={highScore} onHelp={openHelp} isMuted={isMuted} onToggleMute={toggleMute} />}
+            {gameState === 'gameOver' && <GameOver score={score} onRestart={startGame} highScore={highScore} onHelp={openHelp} isMuted={isMuted} onToggleMute={toggleMute} />}
             {isHelpVisible && <HelpModal onClose={closeHelp} />}
           </div>
         </div>

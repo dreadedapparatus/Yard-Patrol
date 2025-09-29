@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import type { Squirrel, Vector2D, GameState, Particle, Tree, Treat, Rabbit } from '../types';
 import Joystick from './Joystick';
 import BarkButton from './BarkButton';
+import { playBarkSound, playPowerUpSound, playSquirrelLaughSound, playSquirrelCatchSound } from './audio';
 import {
   GAME_WIDTH,
   GAME_HEIGHT,
@@ -323,6 +324,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
             setDisplayBarkCooldown(barkCooldown.current);
         }
 
+        playBarkSound();
         const maxRadius = BARK_RADIUS;
         barkWave.current = { position: { ...playerPos.current }, creationTime: now, maxRadius };
 
@@ -402,6 +404,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
         const treatDy = playerPos.current.y - treat.current.position.y;
         const distance = Math.sqrt(treatDx*treatDx + treatDy*treatDy);
         if (distance < (PLAYER_SIZE / 2) + (TREAT_SIZE / 2)) {
+            playPowerUpSound();
             treat.current = null;
             powerUpActive.current = true;
             powerUpEndTime.current = performance.now() + POWER_UP_DURATION;
@@ -525,6 +528,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
         if (inBase || inRoof) {
             if (!gameOverHandled.current) {
                 gameOverHandled.current = true;
+                playSquirrelLaughSound();
                 screenShake.current = { magnitude: 20, duration: 500, startTime: performance.now() };
                 gameOverFlashOpacity.current = 0.6;
                 onGameOver(score.current);
@@ -539,6 +543,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
             squirrelsToRemove.push(squirrel.id);
             score.current += 1;
             setDisplayScore(score.current);
+            playSquirrelCatchSound();
             createPoofEffect(squirrel.position);
         }
     });
