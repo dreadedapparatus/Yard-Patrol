@@ -5,6 +5,7 @@ import GameOver from './components/GameOver';
 import Joystick from './components/Joystick';
 import BarkButton from './components/BarkButton';
 import HelpModal from './components/HelpModal';
+import RotateDeviceOverlay from './components/RotateDeviceOverlay';
 import type { GameState, Vector2D } from './types';
 import { GAME_WIDTH, GAME_HEIGHT } from './constants';
 
@@ -75,15 +76,12 @@ function App() {
 
   return (
     <main className="bg-slate-800 w-screen h-screen flex items-center justify-center font-sans text-white lg:p-4 overflow-hidden">
-      <div className="w-full h-full flex flex-row items-center justify-center lg:space-x-4">
-        {/* Left Control Area (Mobile Only) */}
-        <div className="w-1/4 h-full hidden lg:hidden md:flex items-center justify-center">
-            <Joystick onMove={setJoystickVector} />
-        </div>
-
+      <RotateDeviceOverlay />
+      <div id="game-content" className="w-full h-full flex items-center justify-center relative">
+        
         {/* Game Container */}
         <div 
-            className="bg-amber-800 p-3 rounded-2xl shadow-2xl shadow-black/50 relative"
+            className="bg-amber-800 p-3 rounded-2xl shadow-2xl shadow-black/50"
             style={{ transform: `scale(${scale})`}}
         >
           <div 
@@ -102,8 +100,13 @@ function App() {
           </div>
         </div>
 
+        {/* Left Control Area (Mobile Only) */}
+        <div className="absolute left-0 top-0 h-full w-1/4 flex items-center justify-center lg:hidden">
+            <Joystick onMove={setJoystickVector} />
+        </div>
+
         {/* Right Control Area (Mobile Only) */}
-        <div className="w-1/4 h-full hidden lg:hidden md:flex items-center justify-center">
+        <div className="absolute right-0 top-0 h-full w-1/4 flex items-center justify-center lg:hidden">
             <BarkButton onBark={handleBarkPress} />
         </div>
         

@@ -16,6 +16,9 @@
             fontFamily: {
               sans: ['Nunito', 'sans-serif'],
             },
+            animation: {
+              'spin-slow': 'spin 3s linear infinite',
+            }
           },
         },
       }
@@ -27,6 +30,21 @@
     -webkit-user-select: none; /* Safari */
     -ms-user-select: none; /* IE 10 and IE 11 */
     user-select: none; /* Standard syntax */
+  }
+
+  /* Force Landscape on Mobile */
+  #rotate-device-overlay {
+    display: none; /* Hidden by default */
+  }
+
+  /* Only show overlay on non-desktop screens in portrait mode */
+  @media screen and (orientation: portrait) and (max-width: 1023px) {
+    #game-content {
+      display: none !important;
+    }
+    #rotate-device-overlay {
+      display: flex;
+    }
   }
 </style>
 <script type="importmap">
@@ -40,7 +58,6 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
   <body>
     <div id="root"></div>
