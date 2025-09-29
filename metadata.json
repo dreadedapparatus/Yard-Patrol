@@ -1,0 +1,5 @@
+{
+  "name": "Yard Patrol",
+  "description": "A simple top-down game where you are a dog chasing squirrels out of your yard. Squirrels hop into the yard from all sides and you have to chase them away. If a squirrel gets to your house you lose. You can also use a Bark to quickly scare away all the squirrels on screen - but there is a refractory period after each bark.",
+  "requestFramePermissions": []
+}
