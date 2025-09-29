@@ -12,10 +12,10 @@ const MAX_OFFSET = (JOYSTICK_SIZE - KNOB_SIZE) / 2;
 const Joystick: React.FC<JoystickProps> = ({ onMove }) => {
   const baseRef = useRef<HTMLDivElement>(null);
   const [knobPosition, setKnobPosition] = useState({ x: 0, y: 0 });
-  // Use a ref for dragging state to avoid stale closures in global event listeners
   const isDraggingRef = useRef(false);
+  // Ref to store the unique identifier of the touch controlling the joystick
+  const touchIdRef = useRef<number | null>(null);
 
-  // Memoize the move handler
   const handleMove = useCallback((clientX: number, clientY: number) => {
     if (!baseRef.current) return;
 
@@ -36,55 +36,65 @@ const Joystick: React.FC<JoystickProps> = ({ onMove }) => {
     });
   }, [onMove]);
 
-  // Handle the start of a touch interaction on the joystick element
+  // When a touch starts on the joystick, capture its unique ID
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    // Prevent default behavior, like starting a scroll
-    e.preventDefault();
-    isDraggingRef.current = true;
-    // Immediately update position based on the first touch
-    handleMove(e.targetTouches[0].clientX, e.targetTouches[0].clientY);
+    // If we're not already dragging, start a new drag with the first touch
+    if (!isDraggingRef.current) {
+        e.preventDefault();
+        const touch = e.changedTouches[0];
+        isDraggingRef.current = true;
+        touchIdRef.current = touch.identifier;
+        handleMove(touch.clientX, touch.clientY);
+    }
   };
   
-  // Use useEffect to manage global event listeners for move and end events
   useEffect(() => {
     const handleGlobalTouchMove = (event: TouchEvent) => {
-      if (isDraggingRef.current) {
-        // This is the crucial part for iOS Safari.
-        // It prevents the default scroll/zoom behavior during the drag.
-        event.preventDefault();
-        handleMove(event.targetTouches[0].clientX, event.targetTouches[0].clientY);
+      // Only proceed if we are in a dragging state with a valid touch ID
+      if (isDraggingRef.current && touchIdRef.current !== null) {
+        // Find the specific touch that matches our stored ID among all active touches
+        const activeTouch = Array.from(event.touches).find(
+          t => t.identifier === touchIdRef.current
+        );
+
+        if (activeTouch) {
+          event.preventDefault();
+          handleMove(activeTouch.clientX, activeTouch.clientY);
+        }
       }
     };
 
-    const handleGlobalTouchEnd = () => {
-      if (isDraggingRef.current) {
-        isDraggingRef.current = false;
-        // Reset knob position and movement vector
-        setKnobPosition({ x: 0, y: 0 });
-        onMove({ x: 0, y: 0 });
-      }
+    const handleGlobalTouchEnd = (event: TouchEvent) => {
+        // Check if the touch that was just lifted is the one we are tracking
+        const endedTouch = Array.from(event.changedTouches).find(
+            t => t.identifier === touchIdRef.current
+        );
+
+        if (endedTouch) {
+            isDraggingRef.current = false;
+            touchIdRef.current = null;
+            // Reset knob position and movement vector
+            setKnobPosition({ x: 0, y: 0 });
+            onMove({ x: 0, y: 0 });
+        }
     };
     
-    // Add listeners to the window. `passive: false` is required to allow preventDefault().
-    // This ensures that even if the user's finger leaves the joystick, we still track movement.
     window.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
     window.addEventListener('touchend', handleGlobalTouchEnd);
     window.addEventListener('touchcancel', handleGlobalTouchEnd);
 
-    // Cleanup function to remove listeners when the component unmounts
     return () => {
       window.removeEventListener('touchmove', handleGlobalTouchMove);
       window.removeEventListener('touchend', handleGlobalTouchEnd);
       window.removeEventListener('touchcancel', handleGlobalTouchEnd);
     };
-  }, [handleMove, onMove]); // Rerun if onMove or handleMove changes
+  }, [handleMove, onMove]);
 
   return (
     <div
       ref={baseRef}
       className="relative rounded-full bg-slate-500/30 backdrop-blur-sm border-2 border-white/20"
       style={{ width: JOYSTICK_SIZE, height: JOYSTICK_SIZE }}
-      // Only the start event is directly on the element
       onTouchStart={handleTouchStart}
     >
       <div
@@ -95,7 +105,6 @@ const Joystick: React.FC<JoystickProps> = ({ onMove }) => {
           top: `calc(50% - ${KNOB_SIZE / 2}px)`,
           left: `calc(50% - ${KNOB_SIZE / 2}px)`,
           transform: `translate(${knobPosition.x}px, ${knobPosition.y}px)`,
-          // The knob should snap back when not dragging
           transition: isDraggingRef.current ? 'none' : 'transform 0.1s ease-out',
         }}
       />
