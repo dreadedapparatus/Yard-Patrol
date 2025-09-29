@@ -46,6 +46,16 @@
       display: flex;
     }
   }
+
+  /* Smooth Bark Meter Animation */
+  @keyframes recharge-animation {
+    from { width: 0%; }
+    to { width: 100%; }
+  }
+  .animate-recharge {
+    /* BARK_COOLDOWN is 5000ms */
+    animation: recharge-animation 5s linear forwards;
+  }
 </style>
 <script type="importmap">
 {

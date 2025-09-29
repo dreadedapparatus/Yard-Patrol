@@ -94,6 +94,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
   const [displayScore, setDisplayScore] = useState(0);
   const [displayBarkCooldown, setDisplayBarkCooldown] = useState(0);
   const [displayPowerUpTimeLeft, setDisplayPowerUpTimeLeft] = useState(0);
+  const [barkAnimationKey, setBarkAnimationKey] = useState(0);
 
   const handleJoystickMove = useCallback((vector: Vector2D) => {
     joystickVector.current = vector;
@@ -321,7 +322,8 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
     if (barkTriggered.current && (barkCooldown.current <= 0 || powerUpActive.current)) {
         if (!powerUpActive.current) {
             barkCooldown.current = BARK_COOLDOWN;
-            setDisplayBarkCooldown(barkCooldown.current);
+            setDisplayBarkCooldown(BARK_COOLDOWN);
+            setBarkAnimationKey(k => k + 1);
         }
 
         playBarkSound();
@@ -807,10 +809,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
     };
   }, [gameState, gameLoop, resetGame, draw]);
 
-  const barkProgress = displayBarkCooldown > 0
-    ? ((BARK_COOLDOWN - displayBarkCooldown) / BARK_COOLDOWN) * 100
-    : 100;
-  
+  const isBarkOnCooldown = displayBarkCooldown > 0;
   const isPowerUpActive = displayPowerUpTimeLeft > 0;
   const powerUpProgress = isPowerUpActive ? (displayPowerUpTimeLeft / POWER_UP_DURATION) * 100 : 0;
 
@@ -856,13 +855,20 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
             ) : (
               <div className="relative w-full h-10 bg-black/20 backdrop-blur-sm rounded-full p-1 shadow-lg border border-white/10">
                 <div className="w-full h-full bg-gray-800/50 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-100 ease-linear"
-                    style={{ width: `${barkProgress}%` }}
-                  />
+                   {isBarkOnCooldown ? (
+                    <div
+                      key={barkAnimationKey}
+                      className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 animate-recharge"
+                    />
+                  ) : (
+                    <div
+                      className="h-full bg-gradient-to-r from-cyan-400 to-blue-500"
+                      style={{ width: '100%' }}
+                    />
+                  )}
                 </div>
                 <div className="absolute inset-0 flex items-center justify-center text-white font-bold tracking-wider text-sm" style={{textShadow: '1px 1px 2px rgba(0,0,0,0.7)'}}>
-                  {barkProgress >= 100 ? 'BARK READY' : 'RECHARGING'}
+                  {isBarkOnCooldown ? 'RECHARGING' : 'BARK READY'}
                 </div>
               </div>
             )}
