@@ -7,11 +7,11 @@ interface HelpModalProps {
 const HelpModal: React.FC<HelpModalProps> = ({ onClose }) => {
   return (
     <div 
-      className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={onClose} // Close on backdrop click
     >
       <div 
-        className="bg-slate-800 rounded-2xl shadow-lg p-6 m-4 max-w-lg w-full border border-white/20 text-gray-200"
+        className="bg-slate-800 rounded-2xl shadow-lg p-6 max-w-lg w-full border border-white/20 text-gray-200 max-h-full overflow-y-auto"
         onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside the modal
       >
         <h2 className="text-3xl font-black mb-4 text-white text-center">How to Play</h2>
