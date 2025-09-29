@@ -1,22 +1,19 @@
-import React, { useState, useCallback, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import Game from './components/Game';
 import StartMenu from './components/StartMenu';
 import GameOver from './components/GameOver';
-import Joystick from './components/Joystick';
-import BarkButton from './components/BarkButton';
 import HelpModal from './components/HelpModal';
 import RotateDeviceOverlay from './components/RotateDeviceOverlay';
-import type { GameState, Vector2D } from './types';
+import type { GameState } from './types';
 import { GAME_WIDTH, GAME_HEIGHT } from './constants';
 
 function App() {
   const [gameState, setGameState] = useState<GameState>('menu');
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
-  const [joystickVector, setJoystickVector] = useState<Vector2D>({ x: 0, y: 0 });
-  const [barkTrigger, setBarkTrigger] = useState(0);
   const [scale, setScale] = useState(1);
   const [isHelpVisible, setIsHelpVisible] = useState(false);
+  const gameContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const storedHighScore = localStorage.getItem('yardPatrolHighScore');
@@ -53,14 +50,20 @@ function App() {
     };
   }, []);
 
+  const enterFullscreen = useCallback(() => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile && gameContainerRef.current && gameContainerRef.current.requestFullscreen) {
+        gameContainerRef.current.requestFullscreen().catch(err => {
+            console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+        });
+    }
+  }, []);
+
   const startGame = useCallback(() => {
     setScore(0);
     setGameState('playing');
-  }, []);
-  
-  const handleBarkPress = useCallback(() => {
-    setBarkTrigger(prev => prev + 1);
-  }, []);
+    enterFullscreen();
+  }, [enterFullscreen]);
 
   const handleGameOver = useCallback((finalScore: number) => {
     setScore(finalScore);
@@ -75,7 +78,7 @@ function App() {
   const closeHelp = () => setIsHelpVisible(false);
 
   return (
-    <main className="bg-slate-800 w-screen h-screen flex items-center justify-center font-sans text-white lg:p-4 overflow-hidden">
+    <main ref={gameContainerRef} className="bg-slate-800 w-screen h-screen flex items-center justify-center font-sans text-white lg:p-4 overflow-hidden">
       <RotateDeviceOverlay />
       <div id="game-content" className="w-full h-full flex items-center justify-center relative">
         
@@ -91,23 +94,11 @@ function App() {
             <Game 
               onGameOver={handleGameOver} 
               gameState={gameState} 
-              joystickVector={joystickVector}
-              barkTrigger={barkTrigger}
             />
             {gameState === 'menu' && <StartMenu onStart={startGame} highScore={highScore} onHelp={openHelp} />}
             {gameState === 'gameOver' && <GameOver score={score} onRestart={startGame} highScore={highScore} onHelp={openHelp} />}
             {isHelpVisible && <HelpModal onClose={closeHelp} />}
           </div>
-        </div>
-
-        {/* Left Control Area (Mobile Only) */}
-        <div className="absolute left-0 top-0 h-full w-1/4 flex items-center justify-center lg:hidden">
-            <Joystick onMove={setJoystickVector} />
-        </div>
-
-        {/* Right Control Area (Mobile Only) */}
-        <div className="absolute right-0 top-0 h-full w-1/4 flex items-center justify-center lg:hidden">
-            <BarkButton onBark={handleBarkPress} />
         </div>
         
       </div>

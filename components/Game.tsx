@@ -1,5 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import type { Squirrel, Vector2D, GameState, Particle, Tree, Treat, Rabbit } from '../types';
+import Joystick from './Joystick';
+import BarkButton from './BarkButton';
 import {
   GAME_WIDTH,
   GAME_HEIGHT,
@@ -35,8 +37,6 @@ import {
 interface GameProps {
   onGameOver: (score: number) => void;
   gameState: GameState;
-  joystickVector: Vector2D;
-  barkTrigger: number;
 }
 
 // Define the more accurate house hitbox shape
@@ -55,7 +55,7 @@ const houseRoof = {
 };
 
 
-const Game: React.FC<GameProps> = ({ onGameOver, gameState, joystickVector, barkTrigger }) => {
+const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameId = useRef<number | null>(null);
   const lastUpdateTime = useRef<number>(performance.now());
@@ -72,6 +72,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, joystickVector, bark
   const squirrels = useRef<Squirrel[]>([]);
   const keysPressed = useRef<Record<string, boolean>>({});
   const barkTriggered = useRef<boolean>(false);
+  const joystickVector = useRef<Vector2D>({ x: 0, y: 0 });
   const gameOverHandled = useRef<boolean>(false);
   const score = useRef(0);
   const barkCooldown = useRef(0);
@@ -93,12 +94,13 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, joystickVector, bark
   const [displayBarkCooldown, setDisplayBarkCooldown] = useState(0);
   const [displayPowerUpTimeLeft, setDisplayPowerUpTimeLeft] = useState(0);
 
-  useEffect(() => {
-    if (barkTrigger > 0) {
-      barkTriggered.current = true;
-    }
-  }, [barkTrigger]);
+  const handleJoystickMove = useCallback((vector: Vector2D) => {
+    joystickVector.current = vector;
+  }, []);
 
+  const handleBarkPress = useCallback(() => {
+    barkTriggered.current = true;
+  }, []);
 
   const createPoofEffect = useCallback((position: Vector2D) => {
     for (let i = 0; i < 15; i++) {
@@ -351,8 +353,8 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, joystickVector, bark
     // Player Movement
     const currentSpeed = powerUpActive.current ? PLAYER_SPEED * PLAYER_SPEED_BOOST : PLAYER_SPEED;
     
-    let moveX = joystickVector.x;
-    let moveY = joystickVector.y;
+    let moveX = joystickVector.current.x;
+    let moveY = joystickVector.current.y;
 
     if (keysPressed.current['w'] || keysPressed.current['ArrowUp']) { moveY -= 1; }
     if (keysPressed.current['s'] || keysPressed.current['ArrowDown']) { moveY += 1; }
@@ -656,7 +658,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, joystickVector, bark
         gameOverFlashOpacity.current -= deltaTime / 1000;
     }
 
-  }, [onGameOver, createPoofEffect, joystickVector, checkEntityCollision, checkCircleRectCollision]);
+  }, [onGameOver, createPoofEffect, checkEntityCollision, checkCircleRectCollision]);
 
   const gameLoop = useCallback(() => {
     const now = performance.now();
@@ -749,6 +751,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, joystickVector, bark
     lastRabbitSpawnAttempt.current = performance.now();
     keysPressed.current = {};
     barkTriggered.current = false;
+    joystickVector.current = { x: 0, y: 0};
     gameOverHandled.current = false;
   }, []);
 
@@ -809,6 +812,22 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, joystickVector, bark
   return (
     <>
       <canvas ref={canvasRef} width={GAME_WIDTH} height={GAME_HEIGHT} className="absolute top-0 left-0" />
+
+      {/* On-screen controls, absolutely positioned relative to the game container */}
+      {gameState === 'playing' && (
+        <>
+            {/* Left Control Area */}
+            <div className="absolute left-[-15%] md:left-[-20%] top-0 h-full w-[40%] flex items-center justify-center lg:hidden">
+                <Joystick onMove={handleJoystickMove} />
+            </div>
+
+            {/* Right Control Area */}
+            <div className="absolute right-[-15%] md:right-[-20%] top-0 h-full w-[40%] flex items-center justify-center lg:hidden">
+                <BarkButton onBark={handleBarkPress} />
+            </div>
+        </>
+      )}
+
       {gameState === 'playing' && (
         <div className="absolute top-0 left-0 w-full p-4 flex justify-between items-center text-2xl font-bold pointer-events-none">
           <div className="bg-black/20 backdrop-blur-sm border border-white/10 px-6 py-2 rounded-full text-yellow-300 shadow-lg">
