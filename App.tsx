@@ -88,7 +88,7 @@ function App() {
             style={{ transform: `scale(${scale})`}}
         >
           <div 
-            className="relative rounded-lg overflow-hidden bg-gradient-to-br from-green-600 to-green-800"
+            className="relative rounded-lg bg-gradient-to-br from-green-600 to-green-800"
             style={{ width: `${GAME_WIDTH}px`, height: `${GAME_HEIGHT}px` }}
           >
             <Game 

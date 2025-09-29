@@ -28,7 +28,7 @@ const StartMenu: React.FC<StartMenuProps> = ({ onStart, highScore, onHelp }) => 
   }, [onStart]);
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center bg-black/30 backdrop-blur-md p-4 md:p-8 text-center font-sans">
+    <div className="relative w-full h-full flex flex-col items-center justify-center bg-black/30 backdrop-blur-md p-4 md:p-8 text-center font-sans select-none">
        <button
         onClick={onHelp}
         className="absolute top-4 right-4 w-12 h-12 flex items-center justify-center bg-slate-700/50 hover:bg-slate-600/70 border-2 border-white/20 rounded-full text-2xl font-bold text-white transition-all z-10"

@@ -817,12 +817,12 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
       {gameState === 'playing' && (
         <>
             {/* Left Control Area */}
-            <div className="absolute left-[-15%] md:left-[-20%] top-0 h-full w-[40%] flex items-center justify-center lg:hidden">
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 lg:hidden">
                 <Joystick onMove={handleJoystickMove} />
             </div>
 
             {/* Right Control Area */}
-            <div className="absolute right-[-15%] md:right-[-20%] top-0 h-full w-[40%] flex items-center justify-center lg:hidden">
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 lg:hidden">
                 <BarkButton onBark={handleBarkPress} />
             </div>
         </>
