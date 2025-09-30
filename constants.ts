@@ -7,9 +7,9 @@ export const PLAYER_SPEED_BOOST = 1.05; // 5% faster
 
 export const SQUIRREL_SIZE = 25;
 export const SQUIRREL_SPEED = 0.09; // pixels per millisecond
-export const SQUIRREL_SPAWN_INTERVAL_INITIAL = 3500; // start spawning every 3.5 seconds
+export const SQUIRREL_SPAWN_INTERVAL_INITIAL = 2000; // start spawning every 2 seconds
 export const SQUIRREL_SPAWN_INTERVAL_MIN = 300;     // ramp up to spawning every 0.3 seconds
-export const DIFFICULTY_RAMP_DURATION = 90000;      // 90 seconds to reach max difficulty
+export const DIFFICULTY_RAMP_DURATION = 69000;      // 69 seconds to reach max difficulty
 
 export const RABBIT_SIZE = 30;
 export const RABBIT_SPEED = 0.20; // pixels per millisecond

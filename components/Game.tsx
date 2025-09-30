@@ -537,6 +537,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
         // Collision with house
         const { x, y } = squirrel.position;
         const inBase = x > houseBase.x && x < houseBase.x + houseBase.width && y > houseBase.y && y < houseBase.y + houseBase.height;
+        // FIX: The variable 'roof' was not defined. It has been corrected to 'houseRoof' to match the variable declared at the top of the file.
         const inRoof = x > houseRoof.x && x < houseRoof.x + houseRoof.width && y > houseRoof.y && y < houseRoof.y + houseRoof.height;
 
         if (inBase || inRoof) {
@@ -574,59 +575,89 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
         if ((rab.direction === 'left' && rab.position.x < -RABBIT_SIZE) || (rab.direction === 'right' && rab.position.x > GAME_WIDTH + RABBIT_SIZE)) {
             rabbit.current = null;
         } else {
-            // --- EVASION LOGIC ---
+            // --- EVASION & MOVEMENT LOGIC (REVISED) ---
             const pDistX = rab.position.x - playerPos.current.x;
             const pDistY = rab.position.y - playerPos.current.y;
-            const playerDist = Math.sqrt(pDistX * pDistX + pDistY * pDistY);
+            const playerDist = Math.sqrt(pDistX * pDistX + pDistY * pDistY) || 1;
             
-            const evasionRadius = DOG_SCARE_RADIUS * 1.5; // Increased radius for reaction
+            const evasionRadius = DOG_SCARE_RADIUS * 1.5;
             const isEvading = playerDist < evasionRadius;
 
-            // --- MOVEMENT VECTOR CALCULATION ---
+            // --- CALCULATE MOVEMENT VECTOR FROM INFLUENCES ---
             
-            // 1. Vector towards main target (across the screen)
+            let totalMoveX = 0;
+            let totalMoveY = 0;
+
+            // Influence 1: Primary goal (move towards target)
             const targetDx = rab.targetPosition.x - rab.position.x;
             const targetDy = rab.targetPosition.y - rab.position.y;
-            
-            // 2. Add erratic wobble for unpredictable movement
-            const wobbleFrequency = 300;
-            const wobbleMagnitude = 0.8; 
-            const wobble = Math.sin(animationTime.current / wobbleFrequency) * wobbleMagnitude;
             const targetDist = Math.sqrt(targetDx*targetDx + targetDy*targetDy) || 1;
-            const perpendicularDx = -targetDy / targetDist;
-            const perpendicularDy = targetDx / targetDist;
-            
-            let moveDx = targetDx + perpendicularDx * wobble * 100;
-            let moveDy = targetDy + perpendicularDy * wobble * 100;
+            totalMoveX += (targetDx / targetDist) * 2.0; // Weight of 2.0
+            totalMoveY += (targetDy / targetDist) * 2.0;
 
-            // 3. If evading, add a strong vector away from the player
+            // Influence 2: Erratic wobble
+            const wobbleFrequency = 300;
+            const wobbleMagnitude = 1.5;
+            const wobble = Math.sin(animationTime.current / wobbleFrequency) * wobbleMagnitude;
+            const perpendicularDx = -targetDy / targetDist; // Use target vector for perpendicular
+            const perpendicularDy = targetDx / targetDist;
+            totalMoveX += perpendicularDx * wobble;
+            totalMoveY += perpendicularDy * wobble;
+
+            // Influence 3: Obstacle Avoidance
+            const avoidanceRadius = RABBIT_SIZE * 3; // Rabbit "sees" this far
+            const avoidanceStrength = 3.5;
+            
+            // Trees
+            scenery.current.trees.forEach(tree => {
+                const obsDx = rab.position.x - tree.position.x;
+                const obsDy = rab.position.y - tree.position.y;
+                const dist = Math.sqrt(obsDx * obsDx + obsDy * obsDy) || 1;
+                if (dist < avoidanceRadius) {
+                    const weight = (avoidanceRadius - dist) / avoidanceRadius; // Stronger when closer
+                    totalMoveX += (obsDx / dist) * weight * avoidanceStrength;
+                    totalMoveY += (obsDy / dist) * weight * avoidanceStrength;
+                }
+            });
+
+            // House
+            const houseAvoidanceRadius = HOUSE_SIZE * 0.8;
+            const houseDx = rab.position.x - houseCenter.x;
+            const houseDy = rab.position.y - houseCenter.y;
+            const houseDist = Math.sqrt(houseDx*houseDx + houseDy*houseDy) || 1;
+            if (houseDist < houseAvoidanceRadius) {
+                 const weight = (houseAvoidanceRadius - houseDist) / houseAvoidanceRadius;
+                 totalMoveX += (houseDx / houseDist) * weight * avoidanceStrength;
+                 totalMoveY += (houseDy / houseDist) * weight * avoidanceStrength;
+            }
+
+            // Influence 4: Player Evasion (high priority)
             if (isEvading) {
-                // Weight makes the evasion stronger the closer the player is
                 const weight = (evasionRadius - playerDist) / evasionRadius;
-                const evasionMultiplier = 3.5; // Increased force
-                moveDx += pDistX * weight * evasionMultiplier;
-                moveDy += pDistY * weight * evasionMultiplier;
+                const evasionMultiplier = 5.0; // Very strong push
+                totalMoveX += (pDistX / playerDist) * weight * evasionMultiplier;
+                totalMoveY += (pDistY / playerDist) * weight * evasionMultiplier;
             }
             
-            const moveDist = Math.sqrt(moveDx * moveDx + moveDy * moveDy);
+            const moveDist = Math.sqrt(totalMoveX * totalMoveX + totalMoveY * totalMoveY);
 
             if (moveDist > 0) {
                 // --- APPLY MOVEMENT ---
-                
-                // Apply speed boost if evading
-                const speedBoost = isEvading ? 1.3 : 1.0; // 30% speed boost
+                const speedBoost = isEvading ? 1.3 : 1.0;
                 const currentRabbitSpeed = RABBIT_SPEED * speedBoost;
 
-                const normalizedDx = moveDx / moveDist;
-                const normalizedDy = moveDy / moveDist;
+                const normalizedDx = totalMoveX / moveDist;
+                const normalizedDy = totalMoveY / moveDist;
                 const moveDistance = currentRabbitSpeed * deltaTime;
                 
                 const dx = normalizedDx * moveDistance;
                 const dy = normalizedDy * moveDistance;
                 
+                // Update direction for rendering
                 if (dx > 0) rab.direction = 'right';
                 else if (dx < 0) rab.direction = 'left';
 
+                // Move and check for collision as a fallback
                 const oldPos = { ...rab.position };
                 rab.position.x += dx;
                 if (checkEntityCollision(rab.position, RABBIT_SIZE / 2)) {
