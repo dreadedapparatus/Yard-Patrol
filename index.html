@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Yard Patrol</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Nunito', 'sans-serif'],
+            },
+            animation: {
+              'spin-slow': 'spin 3s linear infinite',
+            }
+          },
+        },
+      }
+    </script>
+<style>
+  /* Prevent pull-to-refresh, double-tap zoom, and text selection for a better mobile game experience */
+  body {
+    overscroll-behavior: none;
+    -webkit-user-select: none; /* Safari */
+    -ms-user-select: none; /* IE 10 and IE 11 */
+    user-select: none; /* Standard syntax */
+  }
+
+  /* Force Landscape on Mobile */
+  #rotate-device-overlay {
+    display: none; /* Hidden by default */
+  }
+
+  /* Only show overlay on non-desktop screens in portrait mode */
+  @media screen and (orientation: portrait) and (max-width: 1023px) {
+    #game-content {
+      display: none !important;
+    }
+    #rotate-device-overlay {
+      display: flex;
+    }
+  }
+
+  /* Smooth Bark Meter Animation */
+  @keyframes recharge-animation {
+    from { width: 0%; }
+    to { width: 100%; }
+  }
+  .animate-recharge {
+    /* BARK_COOLDOWN is 5000ms */
+    animation: recharge-animation 5s linear forwards;
+  }
+</style>
+
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "vite": "https://aistudiocdn.com/vite@^7.1.7",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.0.4",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/Yard-Patrol/assets/index-ba737652.js"></script>
+</head>
+  <body>
+    <div id="root"></div>
+    
+  </body>
+</html>
