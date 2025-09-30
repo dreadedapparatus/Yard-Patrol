@@ -94,7 +94,20 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
   const [displayScore, setDisplayScore] = useState(0);
   const [displayBarkCooldown, setDisplayBarkCooldown] = useState(0);
   const [displayPowerUpTimeLeft, setDisplayPowerUpTimeLeft] = useState(0);
-  const [barkAnimationKey, setBarkAnimationKey] = useState(0);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+  useEffect(() => {
+    // A comprehensive check for touch support.
+    // 1. `navigator.maxTouchPoints` is the modern and most reliable way for devices that have touch.
+    // 2. `'ontouchstart' in window` is a widely used fallback.
+    // 3. The `(pointer: coarse)` media query helps identify devices where touch is the primary input method.
+    const touchSupported = 
+      (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) || 
+      ('ontouchstart' in window) ||
+      (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+
+    setIsTouchDevice(!!touchSupported);
+  }, []);
 
   const handleJoystickMove = useCallback((vector: Vector2D) => {
     joystickVector.current = vector;
@@ -322,8 +335,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
     if (barkTriggered.current && (barkCooldown.current <= 0 || powerUpActive.current)) {
         if (!powerUpActive.current) {
             barkCooldown.current = BARK_COOLDOWN;
-            setDisplayBarkCooldown(BARK_COOLDOWN);
-            setBarkAnimationKey(k => k + 1);
+            setDisplayBarkCooldown(barkCooldown.current);
         }
 
         playBarkSound();
@@ -809,7 +821,10 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
     };
   }, [gameState, gameLoop, resetGame, draw]);
 
-  const isBarkOnCooldown = displayBarkCooldown > 0;
+  const barkProgress = displayBarkCooldown > 0
+    ? ((BARK_COOLDOWN - displayBarkCooldown) / BARK_COOLDOWN) * 100
+    : 100;
+  
   const isPowerUpActive = displayPowerUpTimeLeft > 0;
   const powerUpProgress = isPowerUpActive ? (displayPowerUpTimeLeft / POWER_UP_DURATION) * 100 : 0;
 
@@ -818,15 +833,15 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
       <canvas ref={canvasRef} width={GAME_WIDTH} height={GAME_HEIGHT} className="absolute top-0 left-0" />
 
       {/* On-screen controls, absolutely positioned relative to the game container */}
-      {gameState === 'playing' && (
+      {gameState === 'playing' && isTouchDevice && (
         <>
             {/* Left Control Area */}
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 lg:hidden">
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2">
                 <Joystick onMove={handleJoystickMove} />
             </div>
 
             {/* Right Control Area */}
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 lg:hidden">
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2">
                 <BarkButton onBark={handleBarkPress} />
             </div>
         </>
@@ -855,20 +870,13 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
             ) : (
               <div className="relative w-full h-10 bg-black/20 backdrop-blur-sm rounded-full p-1 shadow-lg border border-white/10">
                 <div className="w-full h-full bg-gray-800/50 rounded-full overflow-hidden">
-                   {isBarkOnCooldown ? (
-                    <div
-                      key={barkAnimationKey}
-                      className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 animate-recharge"
-                    />
-                  ) : (
-                    <div
-                      className="h-full bg-gradient-to-r from-cyan-400 to-blue-500"
-                      style={{ width: '100%' }}
-                    />
-                  )}
+                  <div
+                    className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-100 ease-linear"
+                    style={{ width: `${barkProgress}%` }}
+                  />
                 </div>
                 <div className="absolute inset-0 flex items-center justify-center text-white font-bold tracking-wider text-sm" style={{textShadow: '1px 1px 2px rgba(0,0,0,0.7)'}}>
-                  {isBarkOnCooldown ? 'RECHARGING' : 'BARK READY'}
+                  {barkProgress >= 100 ? 'BARK READY' : 'RECHARGING'}
                 </div>
               </div>
             )}
