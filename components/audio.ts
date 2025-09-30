@@ -40,7 +40,7 @@ export const initAudio = () => {
 
 /**
  * Plays a more realistic "bark" sound effect.
- * This combines a tonal square wave, a filter envelope, and a noise burst for a more authentic sound.
+ * This combines a tonal sawtooth wave with a noise burst for a more authentic sound.
  */
 export const playBarkSound = () => {
     if (isMuted) return;
@@ -48,62 +48,42 @@ export const playBarkSound = () => {
     if (!ctx) return;
 
     const now = ctx.currentTime;
-    const barkLength = 0.2;
 
-    // The main tonal component of the bark
+    // Tonal part of the bark (the "woof")
     const osc = ctx.createOscillator();
-    osc.type = 'square'; // Square wave provides a harsher, more complex tone
+    osc.type = 'sawtooth'; // A bit gritty, like a real bark
+    osc.frequency.setValueAtTime(220, now); // Start at a low-ish pitch
+    osc.frequency.exponentialRampToValueAtTime(120, now + 0.05); // Quick drop in pitch
 
-    // Pitch envelope: A sharp drop in pitch
-    osc.frequency.setValueAtTime(350, now);
-    osc.frequency.exponentialRampToValueAtTime(150, now + 0.05);
-    osc.frequency.linearRampToValueAtTime(100, now + barkLength * 0.8);
-
-    // The filter will shape the tone to sound more organic
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.Q.value = 2; // A slight resonance
-
-    // Filter envelope: Starts open for a sharp attack, then closes to muffle the sound
-    filter.frequency.setValueAtTime(4000, now);
-    filter.frequency.exponentialRampToValueAtTime(400, now + 0.07);
-    filter.frequency.linearRampToValueAtTime(200, now + barkLength);
-
-    // The main volume envelope for the bark
     const gainNode = ctx.createGain();
     gainNode.gain.setValueAtTime(0, now);
-    gainNode.gain.linearRampToValueAtTime(0.5, now + 0.01); // Very fast attack
-    gainNode.gain.exponentialRampToValueAtTime(0.001, now + barkLength);
+    // Increased volume for more punch
+    gainNode.gain.linearRampToValueAtTime(0.7, now + 0.01); // Very fast attack
+    gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.15); // Decay quickly
 
-    // Routing: Oscillator -> Filter -> Gain -> Output
-    osc.connect(filter);
-    filter.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
+    osc.connect(gainNode).connect(ctx.destination);
     osc.start(now);
-    osc.stop(now + barkLength);
+    osc.stop(now + 0.15);
 
-    // A separate noise burst for the initial percussive "b" sound
+    // Add a short burst of noise for the sharp "b" sound at the beginning
     const noise = ctx.createBufferSource();
-    const bufferSize = ctx.sampleRate * 0.1;
+    const bufferSize = ctx.sampleRate * 0.05;
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     const output = buffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
-        output[i] = (Math.random() * 2 - 1) * 0.5; // reduce noise amplitude
+        output[i] = Math.random() * 2 - 1;
     }
     noise.buffer = buffer;
 
     const noiseGain = ctx.createGain();
     noiseGain.gain.setValueAtTime(0, now);
-    noiseGain.gain.linearRampToValueAtTime(0.3, now + 0.005);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    // Increased volume for more punch
+    noiseGain.gain.linearRampToValueAtTime(0.3, now + 0.005); // Very short, sharp attack
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05); // And gone
 
-    // Routing: Noise -> Gain -> Output
-    noise.connect(noiseGain);
-    noiseGain.connect(ctx.destination);
-    
+    noise.connect(noiseGain).connect(ctx.destination);
     noise.start(now);
-    noise.stop(now + 0.1);
+    noise.stop(now + 0.05);
 };
 
 
@@ -121,7 +101,8 @@ export const playSquirrelLaughSound = () => {
     oscillator.type = 'square';
 
     const gainNode = ctx.createGain();
-    gainNode.gain.value = 0.15; // Lower volume to avoid being too harsh
+    // Adjusted volume for better balance
+    gainNode.gain.value = 0.25;
 
     oscillator.connect(gainNode).connect(ctx.destination);
     
@@ -131,7 +112,7 @@ export const playSquirrelLaughSound = () => {
         const startTime = now + i * (chirpLength + 0.02);
         const pitch = 1800 + Math.random() * 400;
         oscillator.frequency.setValueAtTime(pitch, startTime);
-        gainNode.gain.setValueAtTime(0.15, startTime);
+        gainNode.gain.setValueAtTime(0.25, startTime);
         gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + chirpLength);
     }
 
@@ -154,7 +135,8 @@ export const playPowerUpSound = () => {
 
     const gainNode = ctx.createGain();
     gainNode.gain.setValueAtTime(0, now);
-    gainNode.gain.linearRampToValueAtTime(0.3, now + 0.01);
+    // Adjusted volume for better balance
+    gainNode.gain.linearRampToValueAtTime(0.4, now + 0.01);
     gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
 
     oscillator.connect(gainNode).connect(ctx.destination);
@@ -189,7 +171,8 @@ export const playSquirrelCatchSound = () => {
 
     const gainNode = ctx.createGain();
     gainNode.gain.setValueAtTime(0, now);
-    gainNode.gain.linearRampToValueAtTime(0.7, now + 0.01); // Louder attack
+    // Reduced volume to be less fatiguing on repeat plays
+    gainNode.gain.linearRampToValueAtTime(0.5, now + 0.01);
     gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
 
     osc.connect(gainNode).connect(ctx.destination);
@@ -212,7 +195,8 @@ export const playSquirrelCatchSound = () => {
 
     const noiseGain = ctx.createGain();
     noiseGain.gain.setValueAtTime(0, now);
-    noiseGain.gain.linearRampToValueAtTime(0.4, now + 0.005); // Very short and sharp
+    // Reduced volume to be less fatiguing on repeat plays
+    noiseGain.gain.linearRampToValueAtTime(0.25, now + 0.005); // Very short and sharp
     noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
 
     noise.connect(bandpass).connect(noiseGain).connect(ctx.destination);
