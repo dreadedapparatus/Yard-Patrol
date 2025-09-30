@@ -727,15 +727,14 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
   }, [draw, update, gameState]);
   
   const resetGame = useCallback(() => {
-    // Generate scenery to be balanced on both sides of the yard
     const newTrees: Tree[] = [];
     
-    const tryPlaceTree = (xRange: {min: number, max: number}) => {
+    const tryPlaceTree = (xRange: {min: number, max: number}, yRange: {min: number, max: number}) => {
         let x, y, validPosition;
         let attempts = 0;
         do {
             x = Math.random() * (xRange.max - xRange.min) + xRange.min;
-            y = Math.random() * GAME_HEIGHT;
+            y = Math.random() * (yRange.max - yRange.min) + yRange.min;
             
             const houseBuffer = 100; // Generous buffer to ensure trees don't crowd the house.
             const inHouse = x > HOUSE_X - houseBuffer && x < HOUSE_X + HOUSE_SIZE + houseBuffer &&
@@ -766,16 +765,27 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
     };
 
     const midPointX = GAME_WIDTH / 2;
-    // Ensure at least one tree per side, and balance them as much as possible
-    const treesOnLeft = Math.ceil(NUM_TREES / 2);
-    const treesOnRight = Math.floor(NUM_TREES / 2);
+    const midPointY = GAME_HEIGHT / 2;
+    
+    const quadrants = [
+        { xRange: { min: 0, max: midPointX }, yRange: { min: 0, max: midPointY } }, // Top-Left
+        { xRange: { min: midPointX, max: GAME_WIDTH }, yRange: { min: 0, max: midPointY } }, // Top-Right
+        { xRange: { min: 0, max: midPointX }, yRange: { min: midPointY, max: GAME_HEIGHT } }, // Bottom-Left
+        { xRange: { min: midPointX, max: GAME_WIDTH }, yRange: { min: midPointY, max: GAME_HEIGHT } } // Bottom-Right
+    ];
 
-    for (let i = 0; i < treesOnLeft; i++) {
-        tryPlaceTree({ min: 0, max: midPointX });
-    }
+    // Place one tree in each quadrant
+    quadrants.forEach(q => {
+        tryPlaceTree(q.xRange, q.yRange);
+    });
 
-    for (let i = 0; i < treesOnRight; i++) {
-        tryPlaceTree({ min: midPointX, max: GAME_WIDTH });
+    // Place the remaining trees anywhere
+    const remainingTrees = NUM_TREES - quadrants.length;
+    for (let i = 0; i < remainingTrees; i++) {
+        tryPlaceTree(
+            { min: 0, max: GAME_WIDTH }, 
+            { min: 0, max: GAME_HEIGHT }
+        );
     }
     scenery.current.trees = newTrees;
 

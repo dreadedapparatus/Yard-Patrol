@@ -31,6 +31,6 @@ export const TREAT_SPAWN_INTERVAL = 17250; // Try to spawn a treat every 17.25 s
 export const TREAT_HOUSE_MIN_DISTANCE = 150; // pixels from house center
 export const POWER_UP_DURATION = 8000; // 8 seconds in ms
 
-export const NUM_TREES = 5;
+export const NUM_TREES = 6;
 export const TREE_SIZE = 60; // For collision
 export const MIN_TREE_DISTANCE = 120; // pixels
