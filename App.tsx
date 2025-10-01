@@ -41,6 +41,25 @@ function App() {
 
   }, []);
 
+  // Prevent scrolling on touch devices ONLY when the game is playing
+  useEffect(() => {
+    const container = gameContainerRef.current;
+    if (!container) return;
+
+    const preventDefault = (e: TouchEvent) => {
+      e.preventDefault();
+    };
+
+    if (gameState === 'playing' && isTouchDevice) {
+      container.addEventListener('touchmove', preventDefault, { passive: false });
+    }
+
+    // Cleanup function runs when gameState changes or component unmounts
+    return () => {
+      container.removeEventListener('touchmove', preventDefault);
+    };
+  }, [gameState, isTouchDevice]);
+
   useLayoutEffect(() => {
     const updateScale = () => {
       const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
