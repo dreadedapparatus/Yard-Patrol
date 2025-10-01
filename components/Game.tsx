@@ -1293,13 +1293,11 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
           <div className="w-64 text-lg">
             {isPowerUpActive ? (
                <div className="relative w-full h-10 bg-black/20 backdrop-blur-sm rounded-full p-1 shadow-lg border border-yellow-300/30">
-                <div className="w-full h-full bg-yellow-900/50 rounded-full overflow-hidden">
+                <div className="relative w-full h-full bg-yellow-900/50 rounded-full overflow-hidden">
                     <div
-                        className="h-full bg-gradient-to-r from-yellow-300 to-amber-400 transition-transform duration-100 ease-linear"
+                        className="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-yellow-300 to-amber-400 transition-transform duration-100 ease-linear"
                         style={{
-                            width: '100%',
-                            transform: `scaleX(${powerUpProgress / 100})`,
-                            transformOrigin: 'left',
+                            transform: `translateX(${(powerUpProgress - 100)}%)`,
                         }}
                     />
                 </div>
@@ -1309,13 +1307,11 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
             </div>
             ) : (
               <div className={`relative w-full h-10 bg-black/20 backdrop-blur-sm rounded-full p-1 shadow-lg transition-all ${isZoomiesActive ? 'border-2 border-red-500 animate-pulse' : 'border border-white/10'}`}>
-                <div className="w-full h-full bg-gray-800/50 rounded-full overflow-hidden">
+                <div className="relative w-full h-full bg-gray-800/50 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-transform duration-100 ease-linear"
+                    className="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-transform duration-100 ease-linear"
                     style={{
-                        width: '100%',
-                        transform: `scaleX(${barkProgress / 100})`,
-                        transformOrigin: 'left',
+                        transform: `translateX(${(barkProgress - 100)}%)`,
                     }}
                   />
                 </div>
