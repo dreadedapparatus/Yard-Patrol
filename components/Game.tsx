@@ -345,7 +345,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
         ctx.font = `${BIRD_SIZE}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('🐦', 0, 0);
+        ctx.fillText('🐦‍⬛', 0, 0);
         ctx.restore();
     }
 
@@ -1295,8 +1295,12 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
                <div className="relative w-full h-10 bg-black/20 backdrop-blur-sm rounded-full p-1 shadow-lg border border-yellow-300/30">
                 <div className="w-full h-full bg-yellow-900/50 rounded-full overflow-hidden">
                     <div
-                        className="h-full bg-gradient-to-r from-yellow-300 to-amber-400"
-                        style={{ width: `${powerUpProgress}%` }}
+                        className="h-full bg-gradient-to-r from-yellow-300 to-amber-400 transition-transform duration-100 ease-linear"
+                        style={{
+                            width: '100%',
+                            transform: `scaleX(${powerUpProgress / 100})`,
+                            transformOrigin: 'left',
+                        }}
                     />
                 </div>
                 <div className="absolute inset-0 flex items-center justify-center text-white font-bold tracking-wider text-sm" style={{textShadow: '1px 1px 2px rgba(0,0,0,0.7)'}}>
@@ -1307,8 +1311,12 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
               <div className={`relative w-full h-10 bg-black/20 backdrop-blur-sm rounded-full p-1 shadow-lg transition-all ${isZoomiesActive ? 'border-2 border-red-500 animate-pulse' : 'border border-white/10'}`}>
                 <div className="w-full h-full bg-gray-800/50 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-100 ease-linear"
-                    style={{ width: `${barkProgress}%` }}
+                    className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-transform duration-100 ease-linear"
+                    style={{
+                        width: '100%',
+                        transform: `scaleX(${barkProgress / 100})`,
+                        transformOrigin: 'left',
+                    }}
                   />
                 </div>
                 <div className="absolute inset-0 flex items-center justify-center text-white font-bold tracking-wider text-sm" style={{textShadow: '1px 1px 2px rgba(0,0,0,0.7)'}}>
