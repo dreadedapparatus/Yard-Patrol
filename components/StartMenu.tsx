@@ -6,6 +6,7 @@ interface StartMenuProps {
   onHelp: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
+  isTouchDevice: boolean;
 }
 
 const Key: React.FC<{ children: React.ReactNode, className?: string }> = ({ children, className }) => (
@@ -31,7 +32,7 @@ const UnmuteIcon = () => (
 );
 
 
-const StartMenu: React.FC<StartMenuProps> = ({ onStart, highScore, onHelp, isMuted, onToggleMute }) => {
+const StartMenu: React.FC<StartMenuProps> = ({ onStart, highScore, onHelp, isMuted, onToggleMute, isTouchDevice }) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === ' ') {
@@ -66,25 +67,38 @@ const StartMenu: React.FC<StartMenuProps> = ({ onStart, highScore, onHelp, isMut
       <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-white" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.4)' }}>
         Yard Patrol
       </h1>
-      <p className="mt-2 md:mt-4 text-lg md:text-2xl text-gray-200">Chase the squirrels away from your house!</p>
+      <p className="mt-2 md:mt-4 text-lg md:text-2xl text-gray-200">Chase the critters away from your house!</p>
       <div className="mt-4 md:mt-8 text-base md:text-lg text-left bg-black/20 p-4 md:p-6 rounded-xl border border-white/20 shadow-lg">
         <h2 className="text-lg md:text-xl font-bold mb-4 text-white">How to Play:</h2>
-        <div className="space-y-4">
+        {isTouchDevice ? (
+          <div className="space-y-4">
             <div className="flex items-center space-x-3">
-                <div className="flex space-x-1">
-                    <Key>W</Key>
-                    <Key>A</Key>
-                    <Key>S</Key>
-                    <Key>D</Key>
-                </div>
-                <span className="text-gray-200">/ Arrows to Move 🐕</span>
+              <div className="w-10 h-10 flex items-center justify-center text-4xl">🕹️</div>
+              <span className="text-gray-200">Use the joystick to Move 🐕</span>
             </div>
             <div className="flex items-center space-x-3">
-                <Key className="w-auto px-4">Space</Key>
-                <span className="text-gray-200">to Bark!</span>
+              <div className="w-10 h-10 flex items-center justify-center text-4xl">🐶</div>
+              <span className="text-gray-200">Press the button to Bark!</span>
             </div>
-        </div>
-        <p className="mt-6">Don't let any squirrels 🐿️ reach your house 🏠!</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                  <div className="flex space-x-1">
+                      <Key>W</Key>
+                      <Key>A</Key>
+                      <Key>S</Key>
+                      <Key>D</Key>
+                  </div>
+                  <span className="text-gray-200">/ Arrows to Move 🐕</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                  <Key className="w-auto px-4">Space</Key>
+                  <span className="text-gray-200">to Bark!</span>
+              </div>
+          </div>
+        )}
+        <p className="mt-6">Don't let any critters reach your house 🏠!</p>
       </div>
        <p className="mt-4 md:mt-6 text-lg md:text-xl text-yellow-200 font-bold">High Score: {highScore}</p>
       <button
@@ -93,7 +107,7 @@ const StartMenu: React.FC<StartMenuProps> = ({ onStart, highScore, onHelp, isMut
       >
         Start Barking!
       </button>
-      <p className="mt-3 text-gray-300">or press Spacebar</p>
+      {!isTouchDevice && <p className="mt-3 text-gray-300">or press Spacebar</p>}
     </div>
   );
 };

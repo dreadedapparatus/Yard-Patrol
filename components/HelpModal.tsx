@@ -29,17 +29,22 @@ const HelpModal: React.FC<HelpModalProps> = ({ onClose }) => {
           </div>
 
           <div>
-            <h3 className="font-bold text-xl text-yellow-300 mb-1">Abilities:</h3>
-            <ul className="list-disc list-inside ml-2 space-y-1">
-                <li><strong>Bark (🐶):</strong> Scares away all squirrels in a radius. It has a cooldown, so use it wisely!</li>
+            <h3 className="font-bold text-xl text-yellow-300 mb-1">Abilities & Power-Ups:</h3>
+            <ul className="list-disc list-inside ml-2 space-y-2">
+                <li><strong>Bark (🐶):</strong> Scares away all squirrels in a radius. It has a cooldown, so use it wisely!
+                    <br/><span className="text-orange-300 font-bold ml-4">⭐ Scare multiple critters with one bark for a huge combo score multiplier!</span>
+                </li>
                 <li><strong>Treat Power (🦴):</strong> Grab a treat to get a temporary speed boost and unlimited, instant barks!</li>
+                <li><strong>Zoomies (🟡):</strong> Grab a yellow ball for a huge 30% speed boost! A visual trail will show you're in zoomies mode.</li>
             </ul>
           </div>
           
           <div>
             <h3 className="font-bold text-xl text-yellow-300 mb-1">Other Critters:</h3>
-            <ul className="list-disc list-inside ml-2">
+            <ul className="list-disc list-inside ml-2 space-y-1">
               <li><strong>Rabbits (🐇):</strong> These speedy critters run across the yard. Catch them for <strong>+5 bonus points!</strong></li>
+              <li><strong>Mailman (👮‍♂️):</strong> Appears later in the game. He's fast and tricky! Chase him off-screen or catch him for <strong>+10 bonus points</strong>, but don't let him reach the house!</li>
+              <li><strong>Birds (🐦):</strong> Lands in trees, then swoops for the house! You can't catch it, you <strong>must bark</strong> to scare it away for <strong>+3 points</strong>.</li>
             </ul>
           </div>
 

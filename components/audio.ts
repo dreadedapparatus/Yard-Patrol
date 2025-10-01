@@ -203,3 +203,97 @@ export const playSquirrelCatchSound = () => {
     noise.start(now);
     noise.stop(now + 0.05);
 };
+
+/**
+ * Plays a "cha-ching" like sound for catching the mailman.
+ * Uses two sine waves to create a pleasant interval.
+ */
+export const playMailmanCatchSound = () => {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const duration = 0.2;
+    const volume = 0.4;
+
+    // First note
+    const osc1 = ctx.createOscillator();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(880, now); // A5
+
+    const gain1 = ctx.createGain();
+    gain1.gain.setValueAtTime(volume, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    osc1.connect(gain1).connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + duration);
+
+    // Second note (a major third above)
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1108.73, now + 0.08); // C#6
+
+    const gain2 = ctx.createGain();
+    gain2.gain.setValueAtTime(volume, now + 0.08);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.08 + duration);
+
+    osc2.connect(gain2).connect(ctx.destination);
+    osc2.start(now + 0.08);
+    osc2.stop(now + 0.08 + duration);
+};
+
+/**
+ * Plays a frantic "squawk" sound for when a bird is scared.
+ * Uses a high-frequency, quickly modulated sine wave.
+ */
+export const playBirdScareSound = () => {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const duration = 0.2;
+    const volume = 0.3;
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    
+    // Start high and flutter down and up
+    osc.frequency.setValueAtTime(1500, now);
+    osc.frequency.linearRampToValueAtTime(1200, now + duration * 0.5);
+    osc.frequency.linearRampToValueAtTime(1800, now + duration);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + duration);
+};
+
+/**
+ * Plays a quick, "bouncy" sound for the zoomies power-up.
+ */
+export const playZoomiesSound = () => {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    const gainNode = ctx.createGain();
+    gainNode.gain.setValueAtTime(0.5, now);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+    
+    osc.frequency.setValueAtTime(600, now);
+    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.05);
+    osc.frequency.exponentialRampToValueAtTime(700, now + 0.2);
+
+    osc.connect(gainNode).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.3);
+};

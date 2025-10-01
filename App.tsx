@@ -12,9 +12,11 @@ function App() {
   const [gameState, setGameState] = useState<GameState>('menu');
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
+  const [gameOverReason, setGameOverReason] = useState<'squirrel' | 'mailman' | 'bird'>('squirrel');
   const [scale, setScale] = useState(1);
   const [isHelpVisible, setIsHelpVisible] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
   const gameContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -28,6 +30,15 @@ function App() {
         setIsMuted(muted);
         setAudioMuted(muted);
     }
+    
+    // A comprehensive check for touch support. Moved here from Game.tsx
+    const touchSupported = 
+      (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) || 
+      ('ontouchstart' in window) ||
+      (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+
+    setIsTouchDevice(!!touchSupported);
+
   }, []);
 
   useLayoutEffect(() => {
@@ -74,8 +85,9 @@ function App() {
     enterFullscreen();
   }, [enterFullscreen]);
 
-  const handleGameOver = useCallback((finalScore: number) => {
+  const handleGameOver = useCallback((finalScore: number, reason: 'squirrel' | 'mailman' | 'bird' = 'squirrel') => {
     setScore(finalScore);
+    setGameOverReason(reason);
     if (finalScore > highScore) {
       setHighScore(finalScore);
       localStorage.setItem('yardPatrolHighScore', finalScore.toString());
@@ -112,9 +124,10 @@ function App() {
             <Game 
               onGameOver={handleGameOver} 
               gameState={gameState} 
+              isTouchDevice={isTouchDevice}
             />
-            {gameState === 'menu' && <StartMenu onStart={startGame} highScore={highScore} onHelp={openHelp} isMuted={isMuted} onToggleMute={toggleMute} />}
-            {gameState === 'gameOver' && <GameOver score={score} onRestart={startGame} highScore={highScore} onHelp={openHelp} isMuted={isMuted} onToggleMute={toggleMute} />}
+            {gameState === 'menu' && <StartMenu onStart={startGame} highScore={highScore} onHelp={openHelp} isMuted={isMuted} onToggleMute={toggleMute} isTouchDevice={isTouchDevice} />}
+            {gameState === 'gameOver' && <GameOver score={score} onRestart={startGame} highScore={highScore} onHelp={openHelp} isMuted={isMuted} onToggleMute={toggleMute} reason={gameOverReason} isTouchDevice={isTouchDevice} />}
             {isHelpVisible && <HelpModal onClose={closeHelp} />}
           </div>
         </div>

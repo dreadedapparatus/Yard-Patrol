@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface GameOverProps {
   score: number;
@@ -7,6 +7,8 @@ interface GameOverProps {
   onHelp: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
+  reason: 'squirrel' | 'mailman' | 'bird';
+  isTouchDevice: boolean;
 }
 
 const MuteIcon = () => (
@@ -25,8 +27,15 @@ const UnmuteIcon = () => (
     </svg>
 );
 
-const GameOver: React.FC<GameOverProps> = ({ score, onRestart, highScore, onHelp, isMuted, onToggleMute }) => {
+const failureMessages = [
+    "You failed your owners.",
+    "No treats for you!",
+    "Bad dog!"
+];
+
+const GameOver: React.FC<GameOverProps> = ({ score, onRestart, highScore, onHelp, isMuted, onToggleMute, reason, isTouchDevice }) => {
   const isNewHighScore = score > 0 && score === highScore;
+  const [subtitle, setSubtitle] = useState('');
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -36,6 +45,10 @@ const GameOver: React.FC<GameOverProps> = ({ score, onRestart, highScore, onHelp
       }
     };
     window.addEventListener('keydown', handleKeyDown);
+    
+    // Set a random failure message when the component mounts
+    setSubtitle(failureMessages[Math.floor(Math.random() * failureMessages.length)]);
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
@@ -62,7 +75,9 @@ const GameOver: React.FC<GameOverProps> = ({ score, onRestart, highScore, onHelp
       <h1 className="text-7xl md:text-9xl font-black tracking-tighter text-white" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.4)' }}>
         Game Over!
       </h1>
-      <p className="mt-2 md:mt-4 text-xl md:text-3xl text-red-200">A squirrel got to your house!</p>
+      <p className="mt-2 md:mt-4 text-xl md:text-3xl text-red-200">
+        {subtitle}
+      </p>
       
       {isNewHighScore && (
         <p className="mt-4 md:mt-6 text-2xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-amber-400 animate-pulse">
@@ -72,7 +87,7 @@ const GameOver: React.FC<GameOverProps> = ({ score, onRestart, highScore, onHelp
 
       <div className="mt-6 md:mt-8 text-center">
         <p className="text-5xl md:text-6xl font-bold text-white">{score}</p>
-        <p className="text-base md:text-xl text-yellow-300 font-bold tracking-widest mt-1">SQUIRRELS CHASED</p>
+        <p className="text-base md:text-xl text-yellow-300 font-bold tracking-widest mt-1">POINTS</p>
       </div>
       
       <p className="mt-2 text-lg md:text-2xl text-gray-300">
@@ -85,7 +100,7 @@ const GameOver: React.FC<GameOverProps> = ({ score, onRestart, highScore, onHelp
       >
         Protect Again
       </button>
-      <p className="mt-3 text-gray-300">or press Spacebar</p>
+      {!isTouchDevice && <p className="mt-3 text-gray-300">or press Spacebar</p>}
     </div>
   );
 };

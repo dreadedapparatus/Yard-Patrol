@@ -44,3 +44,25 @@ export interface Tree {
 export interface Treat {
     position: Vector2D;
 }
+
+export interface TennisBall {
+    position: Vector2D;
+}
+
+export interface Mailman {
+  id: number;
+  position: Vector2D;
+  spawnTime: number;
+  targetPosition: Vector2D;
+  direction: 'left' | 'right';
+  state: 'approaching' | 'evading';
+}
+
+export interface Bird {
+  id: number;
+  position: Vector2D;
+  state: 'perched' | 'swooping';
+  perchEndTime: number;
+  targetTreeIndex: number;
+  swoopAngle: number;
+}

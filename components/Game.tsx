@@ -1,8 +1,8 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import type { Squirrel, Vector2D, GameState, Particle, Tree, Treat, Rabbit } from '../types';
+import type { Squirrel, Vector2D, GameState, Particle, Tree, Treat, Rabbit, Mailman, Bird, TennisBall } from '../types';
 import Joystick from './Joystick';
 import BarkButton from './BarkButton';
-import { playBarkSound, playPowerUpSound, playSquirrelLaughSound, playSquirrelCatchSound } from './audio';
+import { playBarkSound, playPowerUpSound, playSquirrelLaughSound, playSquirrelCatchSound, playMailmanCatchSound, playBirdScareSound, playZoomiesSound } from './audio';
 import {
   GAME_WIDTH,
   GAME_HEIGHT,
@@ -32,12 +32,34 @@ import {
   RABBIT_SPAWN_CHANCE,
   RABBIT_POINTS,
   TREAT_HOUSE_MIN_DISTANCE,
+  MAILMAN_SIZE,
+  MAILMAN_SPEED,
+  MAILMAN_SPAWN_START_TIME,
+  MAILMAN_SPAWN_INTERVAL,
+  MAILMAN_SPAWN_CHANCE,
+  MAILMAN_EVASION_RADIUS,
+  MAILMAN_POINTS,
+  MAILMAN_EVASION_SPEED_BOOST,
+  BIRD_SIZE,
+  BIRD_SWOOP_SPEED,
+  BIRD_SPAWN_START_TIME,
+  BIRD_SPAWN_INTERVAL_INITIAL,
+  BIRD_SPAWN_INTERVAL_MIN,
+  BIRD_SPAWN_CHANCE,
+  BIRD_PERCH_TIME_MIN,
+  BIRD_PERCH_TIME_MAX,
+  BIRD_POINTS,
+  TENNIS_BALL_SIZE,
+  TENNIS_BALL_SPAWN_INTERVAL,
+  ZOOMIES_DURATION,
+  ZOOMIES_SPEED_BOOST,
 } from '../constants';
 
 
 interface GameProps {
-  onGameOver: (score: number) => void;
+  onGameOver: (score: number, reason: 'squirrel' | 'mailman' | 'bird') => void;
   gameState: GameState;
+  isTouchDevice: boolean;
 }
 
 // Define the more accurate house hitbox shape
@@ -56,7 +78,7 @@ const houseRoof = {
 };
 
 
-const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
+const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameId = useRef<number | null>(null);
   const lastUpdateTime = useRef<number>(performance.now());
@@ -64,12 +86,16 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
   const animationTime = useRef<number>(performance.now());
   const gameStartTime = useRef<number>(performance.now());
   const lastTreatSpawnAttempt = useRef<number>(performance.now());
+  const lastTennisBallSpawnAttempt = useRef<number>(performance.now());
   const lastRabbitSpawnAttempt = useRef<number>(performance.now());
+  const lastMailmanSpawnAttempt = useRef<number>(performance.now());
+  const lastBirdSpawnAttempt = useRef<number>(performance.now());
 
 
   // Game State Refs
   const playerPos = useRef<Vector2D>({ x: GAME_WIDTH / 2, y: GAME_HEIGHT - PLAYER_SIZE * 2 });
   const playerDirection = useRef<'left' | 'right'>('left');
+  const playerTrail = useRef<Vector2D[]>([]);
   const squirrels = useRef<Squirrel[]>([]);
   const keysPressed = useRef<Record<string, boolean>>({});
   const barkTriggered = useRef<boolean>(false);
@@ -79,9 +105,15 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
   const barkCooldown = useRef(0);
   const scenery = useRef<{ trees: Tree[] }>({ trees: [] });
   const treat = useRef<Treat | null>(null);
+  const tennisBall = useRef<TennisBall | null>(null);
   const rabbit = useRef<Rabbit | null>(null);
+  const mailman = useRef<Mailman | null>(null);
+  const bird = useRef<Bird | null>(null);
+  const mailmanHasSpawned = useRef<boolean>(false);
   const powerUpActive = useRef<boolean>(false);
   const powerUpEndTime = useRef<number>(0);
+  const zoomiesActive = useRef<boolean>(false);
+  const zoomiesEndTime = useRef<number>(0);
 
 
   // Visual Effects Refs
@@ -94,20 +126,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
   const [displayScore, setDisplayScore] = useState(0);
   const [displayBarkCooldown, setDisplayBarkCooldown] = useState(0);
   const [displayPowerUpTimeLeft, setDisplayPowerUpTimeLeft] = useState(0);
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
-
-  useEffect(() => {
-    // A comprehensive check for touch support.
-    // 1. `navigator.maxTouchPoints` is the modern and most reliable way for devices that have touch.
-    // 2. `'ontouchstart' in window` is a widely used fallback.
-    // 3. The `(pointer: coarse)` media query helps identify devices where touch is the primary input method.
-    const touchSupported = 
-      (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) || 
-      ('ontouchstart' in window) ||
-      (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-
-    setIsTouchDevice(!!touchSupported);
-  }, []);
+  const [displayZoomiesTimeLeft, setDisplayZoomiesTimeLeft] = useState(0);
 
   const handleJoystickMove = useCallback((vector: Vector2D) => {
     joystickVector.current = vector;
@@ -201,6 +220,15 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
         ctx.textBaseline = 'middle';
         ctx.fillText('🦴', treat.current.position.x, treat.current.position.y + treatBob);
     }
+    
+    // Draw Tennis Ball
+    if (tennisBall.current) {
+        const ballBob = Math.sin(animationTime.current / 250) * 3;
+        ctx.font = `${TENNIS_BALL_SIZE}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🟡', tennisBall.current.position.x, tennisBall.current.position.y + ballBob);
+    }
 
     // Draw house
     ctx.font = `${HOUSE_SIZE}px sans-serif`;
@@ -212,6 +240,26 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
     const playerBob = Math.sin(animationTime.current / 150) * 2;
     const playerRenderX = playerPos.current.x;
     const playerRenderY = playerPos.current.y + playerBob;
+
+    // Draw player trail
+    if (zoomiesActive.current) {
+        playerTrail.current.forEach((pos, index) => {
+            const progress = (index + 1) / playerTrail.current.length;
+            const opacity = (1 - progress) * 0.4;
+            
+            ctx.save();
+            ctx.globalAlpha = opacity;
+            ctx.translate(pos.x, pos.y + playerBob);
+            if (playerDirection.current === 'right') { // Assume trail direction matches player
+                ctx.scale(-1, 1);
+            }
+            ctx.font = `${PLAYER_SIZE}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🐕', 0, 0);
+            ctx.restore();
+        });
+    }
     
     // Add power-up aura effect
     if (powerUpActive.current) {
@@ -271,6 +319,36 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
         ctx.restore();
     }
 
+    // Draw Mailman
+    if (mailman.current) {
+        const bobOffset = Math.sin(animationTime.current / 200) * 2;
+        ctx.save();
+        ctx.translate(mailman.current.position.x, mailman.current.position.y + bobOffset);
+        ctx.font = `${MAILMAN_SIZE}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('👮‍♂️', 0, 0); // Police officer emoji
+        ctx.restore();
+    }
+
+    // Draw Bird
+    if (bird.current) {
+        const b = bird.current;
+        const bobOffset = b.state === 'perched' ? Math.sin(animationTime.current / 300) * 2 : 0;
+        ctx.save();
+        ctx.translate(b.position.x, b.position.y + bobOffset);
+        if (b.state === 'swooping') {
+            // Rotate the bird to face its direction of movement.
+            // Add PI/2 because the emoji faces upwards when angle is 0.
+            ctx.rotate(b.swoopAngle + Math.PI / 2); 
+        }
+        ctx.font = `${BIRD_SIZE}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🐦', 0, 0);
+        ctx.restore();
+    }
+
     // Draw Particles
     particles.current.forEach(p => {
         ctx.save();
@@ -315,11 +393,15 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
   const update = useCallback((deltaTime: number) => {
     const now = performance.now();
     
-    // Update Power-up state
+    // Update Power-up states
     if (powerUpActive.current && now > powerUpEndTime.current) {
         powerUpActive.current = false;
     }
+    if (zoomiesActive.current && now > zoomiesEndTime.current) {
+        zoomiesActive.current = false;
+    }
     setDisplayPowerUpTimeLeft(powerUpActive.current ? Math.max(0, powerUpEndTime.current - now) : 0);
+    setDisplayZoomiesTimeLeft(zoomiesActive.current ? Math.max(0, zoomiesEndTime.current - now) : 0);
 
     const checkPlayerCollision = (position: Vector2D): boolean => {
         return checkEntityCollision(position, PLAYER_SIZE / 2);
@@ -342,32 +424,104 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
         const maxRadius = BARK_RADIUS;
         barkWave.current = { position: { ...playerPos.current }, creationTime: now, maxRadius };
 
-        const squirrelsToScare: Squirrel[] = [];
-        const remainingSquirrels: Squirrel[] = [];
+        const scaredEnemies: { position: Vector2D; points: number }[] = [];
 
+        // Check squirrels
+        const remainingSquirrels: Squirrel[] = [];
         squirrels.current.forEach(squirrel => {
             const dx = squirrel.position.x - playerPos.current.x;
             const dy = squirrel.position.y - playerPos.current.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             if (distance < BARK_RADIUS) {
-                squirrelsToScare.push(squirrel);
+                scaredEnemies.push({ position: squirrel.position, points: 1 });
+                createPoofEffect(squirrel.position);
             } else {
                 remainingSquirrels.push(squirrel);
             }
         });
+        squirrels.current = remainingSquirrels;
 
-        if (squirrelsToScare.length > 0) {
-            score.current += squirrelsToScare.length;
-            squirrelsToScare.forEach(s => createPoofEffect(s.position));
-            squirrels.current = remainingSquirrels;
+        // Check bird
+        let birdScared = false;
+        if (bird.current) {
+            const b = bird.current;
+            const dx = b.position.x - playerPos.current.x;
+            const dy = b.position.y - playerPos.current.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < BARK_RADIUS) {
+                scaredEnemies.push({ position: b.position, points: BIRD_POINTS });
+                createPoofEffect(b.position);
+                playBirdScareSound();
+                birdScared = true;
+            }
         }
+
+        // Calculate points and apply combo multiplier
+        const numEnemiesScared = scaredEnemies.length;
+        if (numEnemiesScared > 0) {
+            const basePoints = scaredEnemies.reduce((sum, enemy) => sum + enemy.points, 0);
+
+            if (numEnemiesScared > 1) { // COMBO!
+                const totalPoints = basePoints * numEnemiesScared;
+                score.current += totalPoints;
+                playMailmanCatchSound(); // Use a more rewarding sound for combos
+
+                const avgPosition = scaredEnemies.reduce((acc, enemy) => ({
+                    x: acc.x + enemy.position.x,
+                    y: acc.y + enemy.position.y,
+                }), { x: 0, y: 0 });
+                avgPosition.x /= numEnemiesScared;
+                avgPosition.y /= numEnemiesScared;
+
+                const life = 1500;
+                particles.current.push({
+                    position: { x: avgPosition.x, y: avgPosition.y - 10 },
+                    velocity: { x: 0, y: -0.8 },
+                    life: life,
+                    initialLife: life,
+                    size: 30,
+                    color: '#FFA500',
+                    rotation: 0,
+                    rotationSpeed: 0,
+                    text: `+${totalPoints} COMBO!`,
+                });
+            } else { // No combo, just one enemy
+                const totalPoints = basePoints;
+                score.current += totalPoints;
+
+                const enemy = scaredEnemies[0];
+                const life = 1000;
+                particles.current.push({
+                    position: { x: enemy.position.x, y: enemy.position.y },
+                    velocity: { x: 0, y: -1 },
+                    life: life,
+                    initialLife: life,
+                    size: 25,
+                    color: '#FFD700',
+                    rotation: 0,
+                    rotationSpeed: 0,
+                    text: `+${totalPoints}`
+                });
+            }
+        }
+        
+        if (birdScared) {
+            bird.current = null;
+        }
+
         setDisplayScore(score.current);
     }
     barkTriggered.current = false; // Consume trigger
 
     // Player Movement
-    const currentSpeed = powerUpActive.current ? PLAYER_SPEED * PLAYER_SPEED_BOOST : PLAYER_SPEED;
+    let currentSpeed = PLAYER_SPEED;
+    if (powerUpActive.current) {
+        currentSpeed *= PLAYER_SPEED_BOOST;
+    } else if (zoomiesActive.current) {
+        currentSpeed *= ZOOMIES_SPEED_BOOST;
+    }
     
     let moveX = joystickVector.current.x;
     let moveY = joystickVector.current.y;
@@ -406,6 +560,19 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
         if (checkPlayerCollision(playerPos.current)) {
             playerPos.current.y = oldPos.y;
         }
+        
+        // Update player trail for zoomies
+        playerTrail.current.unshift({ ...playerPos.current });
+        const MAX_TRAIL_LENGTH = 10;
+        if (playerTrail.current.length > MAX_TRAIL_LENGTH) {
+            playerTrail.current.pop();
+        }
+
+    }
+    
+    // Clear trail if zoomies is not active
+    if (!zoomiesActive.current && playerTrail.current.length > 0) {
+        playerTrail.current = [];
     }
 
     // Player bounds
@@ -422,6 +589,19 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
             treat.current = null;
             powerUpActive.current = true;
             powerUpEndTime.current = performance.now() + POWER_UP_DURATION;
+        }
+    }
+    
+    // Tennis Ball Collection
+    if (tennisBall.current) {
+        const ballDx = playerPos.current.x - tennisBall.current.position.x;
+        const ballDy = playerPos.current.y - tennisBall.current.position.y;
+        const distance = Math.sqrt(ballDx*ballDx + ballDy*ballDy);
+        if (distance < (PLAYER_SIZE / 2) + (TENNIS_BALL_SIZE / 2)) {
+            playZoomiesSound();
+            tennisBall.current = null;
+            zoomiesActive.current = true;
+            zoomiesEndTime.current = performance.now() + ZOOMIES_DURATION;
         }
     }
 
@@ -446,9 +626,10 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
         });
     }
     
-    // Treat Spawning
-    if (!treat.current && now - lastTreatSpawnAttempt.current > TREAT_SPAWN_INTERVAL) {
-        lastTreatSpawnAttempt.current = now;
+    // Power-up Spawning (Treat or Tennis Ball)
+    const canSpawnPowerUp = !treat.current && !tennisBall.current && !powerUpActive.current && !zoomiesActive.current;
+
+    const spawnPowerUp = (isTreat: boolean) => {
         let x, y, validPosition;
         let attempts = 0;
         const houseCenter = { x: HOUSE_X + HOUSE_SIZE / 2, y: HOUSE_Y + HOUSE_SIZE / 2 };
@@ -476,7 +657,21 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
         } while (!validPosition);
 
         if (validPosition) {
-            treat.current = { position: { x, y } };
+            if (isTreat) {
+                treat.current = { position: { x, y } };
+            } else {
+                tennisBall.current = { position: { x, y } };
+            }
+        }
+    }
+
+    if (canSpawnPowerUp) {
+        if (now - lastTreatSpawnAttempt.current > TREAT_SPAWN_INTERVAL) {
+            lastTreatSpawnAttempt.current = now;
+            spawnPowerUp(true);
+        } else if (now - lastTennisBallSpawnAttempt.current > TENNIS_BALL_SPAWN_INTERVAL) {
+            lastTennisBallSpawnAttempt.current = now;
+            spawnPowerUp(false);
         }
     }
     
@@ -546,7 +741,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
                 playSquirrelLaughSound();
                 screenShake.current = { magnitude: 20, duration: 500, startTime: performance.now() };
                 gameOverFlashOpacity.current = 0.6;
-                onGameOver(score.current);
+                onGameOver(score.current, 'squirrel');
             }
             return;
         }
@@ -693,6 +888,169 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
             }
         }
     }
+
+    // Mailman Spawning
+    const canSpawnMailman = now - gameStartTime.current > MAILMAN_SPAWN_START_TIME;
+    if (!mailman.current && !mailmanHasSpawned.current && canSpawnMailman && now - lastMailmanSpawnAttempt.current > MAILMAN_SPAWN_INTERVAL) {
+        lastMailmanSpawnAttempt.current = now;
+        if (Math.random() < MAILMAN_SPAWN_CHANCE) {
+            mailmanHasSpawned.current = true;
+            const x = Math.random() * (GAME_WIDTH * 0.6) + (GAME_WIDTH * 0.2); // Spawn in middle 60%
+            const y = GAME_HEIGHT + MAILMAN_SIZE / 2;
+            mailman.current = {
+                id: now,
+                position: { x, y },
+                spawnTime: now,
+                targetPosition: { x: HOUSE_X + HOUSE_SIZE / 2, y: HOUSE_Y + HOUSE_SIZE * 0.7 },
+                direction: 'left',
+                state: 'approaching',
+            };
+        }
+    }
+
+    // Mailman Movement, Evasion, and Collision
+    if (mailman.current) {
+        const mm = mailman.current;
+
+        const pDistX = mm.position.x - playerPos.current.x;
+        const pDistY = mm.position.y - playerPos.current.y;
+        const playerDist = Math.sqrt(pDistX * pDistX + pDistY * pDistY) || 1;
+        
+        // If mailman is approaching and player gets too close, switch to evading permanently.
+        if (mm.state === 'approaching' && playerDist < MAILMAN_EVASION_RADIUS) {
+            mm.state = 'evading';
+        }
+
+        let totalMoveX = 0;
+        let totalMoveY = 0;
+
+        if (mm.state === 'approaching') {
+            // Move towards the house
+            const targetDx = mm.targetPosition.x - mm.position.x;
+            const targetDy = mm.targetPosition.y - mm.position.y;
+            const targetDist = Math.sqrt(targetDx * targetDx + targetDy * targetDy) || 1;
+            totalMoveX = (targetDx / targetDist);
+            totalMoveY = (targetDy / targetDist);
+        } else { // 'evading' state
+            // Move directly away from the player
+            totalMoveX = (pDistX / playerDist);
+            totalMoveY = (pDistY / playerDist);
+        }
+        
+        const moveDist = Math.sqrt(totalMoveX * totalMoveX + totalMoveY * totalMoveY);
+
+        if (moveDist > 0) {
+            // Speed is normal when approaching, boosted when evading.
+            const speedBoost = mm.state === 'evading' ? MAILMAN_EVASION_SPEED_BOOST : 1.0;
+            const currentMailmanSpeed = MAILMAN_SPEED * speedBoost;
+            const normalizedDx = totalMoveX / moveDist;
+            const normalizedDy = totalMoveY / moveDist;
+            mm.position.x += normalizedDx * currentMailmanSpeed * deltaTime;
+            mm.position.y += normalizedDy * currentMailmanSpeed * deltaTime;
+        }
+        
+        // Check for outcomes after movement
+        const playerCatchDx = playerPos.current.x - mm.position.x;
+        const playerCatchDy = playerPos.current.y - mm.position.y;
+        const isCaught = Math.sqrt(playerCatchDx*playerCatchDx + playerCatchDy*playerCatchDy) < (PLAYER_SIZE / 2 + MAILMAN_SIZE / 2);
+        
+        const hasEscaped = mm.position.x < -MAILMAN_SIZE / 2 || 
+                           mm.position.x > GAME_WIDTH + MAILMAN_SIZE / 2 ||
+                           mm.position.y < -MAILMAN_SIZE / 2 ||
+                           mm.position.y > GAME_HEIGHT + MAILMAN_SIZE / 2;
+
+        // Game over only happens if he is still in the 'approaching' state.
+        const reachedHouse = mm.state === 'approaching' && mm.position.y <= mm.targetPosition.y;
+
+        if (isCaught) {
+            score.current += MAILMAN_POINTS;
+            setDisplayScore(score.current);
+            playMailmanCatchSound();
+            createPoofEffect(mm.position);
+            const life = 1000;
+            particles.current.push({
+                position: { x: mm.position.x, y: mm.position.y },
+                velocity: { x: 0, y: -1 },
+                life: life,
+                initialLife: life,
+                size: 25,
+                color: '#FFD700',
+                rotation: 0,
+                rotationSpeed: 0,
+                text: '+10'
+            });
+            mailman.current = null;
+        } else if (hasEscaped) {
+             mailman.current = null;
+        } else if (reachedHouse) {
+            if (!gameOverHandled.current) {
+                gameOverHandled.current = true;
+                playSquirrelLaughSound();
+                screenShake.current = { magnitude: 20, duration: 500, startTime: performance.now() };
+                gameOverFlashOpacity.current = 0.6;
+                onGameOver(score.current, 'mailman');
+            }
+        }
+    }
+
+    // Bird Spawning
+    const canSpawnBird = now - gameStartTime.current > BIRD_SPAWN_START_TIME;
+    const currentBirdSpawnInterval = BIRD_SPAWN_INTERVAL_INITIAL - (BIRD_SPAWN_INTERVAL_INITIAL - BIRD_SPAWN_INTERVAL_MIN) * difficultyProgress;
+
+    if (!bird.current && canSpawnBird && now - lastBirdSpawnAttempt.current > currentBirdSpawnInterval) {
+        lastBirdSpawnAttempt.current = now;
+        if (Math.random() < BIRD_SPAWN_CHANCE && scenery.current.trees.length > 0) {
+            const treeIndex = Math.floor(Math.random() * scenery.current.trees.length);
+            const perchTime = Math.random() * (BIRD_PERCH_TIME_MAX - BIRD_PERCH_TIME_MIN) + BIRD_PERCH_TIME_MIN;
+            
+            bird.current = {
+                id: now,
+                position: { ...scenery.current.trees[treeIndex].position },
+                state: 'perched',
+                perchEndTime: now + perchTime,
+                targetTreeIndex: treeIndex,
+                swoopAngle: 0,
+            };
+        }
+    }
+    
+    // Bird Movement and Collision
+    if (bird.current) {
+        const b = bird.current;
+        if (b.state === 'perched') {
+            // Update position to stay on tree, slightly above center
+            const tree = scenery.current.trees[b.targetTreeIndex];
+            if (tree) {
+                b.position.x = tree.position.x;
+                b.position.y = tree.position.y - 30;
+            }
+            
+            if (now > b.perchEndTime) {
+                b.state = 'swooping';
+            }
+        } else { // 'swooping'
+            const targetDx = houseCenter.x - b.position.x;
+            const targetDy = houseCenter.y - b.position.y;
+            const targetDist = Math.sqrt(targetDx * targetDx + targetDy * targetDy) || 1;
+            
+            b.position.x += (targetDx / targetDist) * BIRD_SWOOP_SPEED * deltaTime;
+            b.position.y += (targetDy / targetDist) * BIRD_SWOOP_SPEED * deltaTime;
+            b.swoopAngle = Math.atan2(targetDy, targetDx);
+            
+            const inBase = checkCircleRectCollision(b.position, BIRD_SIZE / 2, houseBase);
+            const inRoof = checkCircleRectCollision(b.position, BIRD_SIZE / 2, houseRoof);
+
+            if (inBase || inRoof) {
+                if (!gameOverHandled.current) {
+                    gameOverHandled.current = true;
+                    playSquirrelLaughSound(); // Re-use generic failure sound
+                    screenShake.current = { magnitude: 20, duration: 500, startTime: performance.now() };
+                    gameOverFlashOpacity.current = 0.6;
+                    onGameOver(score.current, 'bird');
+                }
+            }
+        }
+    }
     
     // Update Particles
     particles.current.forEach(p => {
@@ -729,6 +1087,18 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
   const resetGame = useCallback(() => {
     const newTrees: Tree[] = [];
     
+    // Define a wider safe spawn area, accounting for specific control zones later.
+    const spawnPaddingHorizontal = 40; // Basic edge padding
+    const spawnPaddingTop = 80; // Extra space to avoid score/bark UI
+    const spawnPaddingBottom = 40;
+
+    const safeArea = {
+        minX: spawnPaddingHorizontal,
+        maxX: GAME_WIDTH - spawnPaddingHorizontal,
+        minY: spawnPaddingTop,
+        maxY: GAME_HEIGHT - spawnPaddingBottom,
+    };
+    
     const tryPlaceTree = (xRange: {min: number, max: number}, yRange: {min: number, max: number}) => {
         let x, y, validPosition;
         let attempts = 0;
@@ -754,7 +1124,18 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
                     break;
                 }
             }
-            validPosition = !inHouse && !inPlayerSpawn && !tooCloseToAnotherTree;
+
+            // Avoid spawning on the on-screen touch controls, which are vertically centered.
+            const joystickRadius = 70; // Half of JOYSTICK_SIZE (140)
+            const barkButtonRadius = 72; // Half of w-36 (144px)
+            const treeRadius = TREE_SIZE / 2;
+            const controlBuffer = 10; // Extra pixels of space
+
+            const isNearLeftControl = Math.sqrt(Math.pow(x - 0, 2) + Math.pow(y - GAME_HEIGHT / 2, 2)) < joystickRadius + treeRadius + controlBuffer;
+            const isNearRightControl = Math.sqrt(Math.pow(x - GAME_WIDTH, 2) + Math.pow(y - GAME_HEIGHT / 2, 2)) < barkButtonRadius + treeRadius + controlBuffer;
+
+            validPosition = !inHouse && !inPlayerSpawn && !tooCloseToAnotherTree && !isNearLeftControl && !isNearRightControl;
+            
             attempts++;
             if (attempts > 100) break; // Failsafe to prevent infinite loops
         } while (!validPosition);
@@ -764,32 +1145,34 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
         }
     };
 
-    const midPointX = GAME_WIDTH / 2;
-    const midPointY = GAME_HEIGHT / 2;
+    // Use the safe area to define quadrants for even distribution
+    const midPointX = (safeArea.minX + safeArea.maxX) / 2;
+    const midPointY = (safeArea.minY + safeArea.maxY) / 2;
     
     const quadrants = [
-        { xRange: { min: 0, max: midPointX }, yRange: { min: 0, max: midPointY } }, // Top-Left
-        { xRange: { min: midPointX, max: GAME_WIDTH }, yRange: { min: 0, max: midPointY } }, // Top-Right
-        { xRange: { min: 0, max: midPointX }, yRange: { min: midPointY, max: GAME_HEIGHT } }, // Bottom-Left
-        { xRange: { min: midPointX, max: GAME_WIDTH }, yRange: { min: midPointY, max: GAME_HEIGHT } } // Bottom-Right
+        { xRange: { min: safeArea.minX, max: midPointX }, yRange: { min: safeArea.minY, max: midPointY } }, // Top-Left
+        { xRange: { min: midPointX, max: safeArea.maxX }, yRange: { min: safeArea.minY, max: midPointY } }, // Top-Right
+        { xRange: { min: safeArea.minX, max: midPointX }, yRange: { min: midPointY, max: safeArea.maxY } }, // Bottom-Left
+        { xRange: { min: midPointX, max: safeArea.maxX }, yRange: { min: midPointY, max: safeArea.maxY } } // Bottom-Right
     ];
 
-    // Place one tree in each quadrant
+    // Place one tree in each safe quadrant
     quadrants.forEach(q => {
         tryPlaceTree(q.xRange, q.yRange);
     });
 
-    // Place the remaining trees anywhere
+    // Place the remaining trees anywhere within the overall safe area
     const remainingTrees = NUM_TREES - quadrants.length;
     for (let i = 0; i < remainingTrees; i++) {
         tryPlaceTree(
-            { min: 0, max: GAME_WIDTH }, 
-            { min: 0, max: GAME_HEIGHT }
+            { min: safeArea.minX, max: safeArea.maxX }, 
+            { min: safeArea.minY, max: safeArea.maxY }
         );
     }
     scenery.current.trees = newTrees;
 
     playerPos.current = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - PLAYER_SIZE * 2 };
+    playerTrail.current = [];
     squirrels.current = [];
     particles.current = [];
     barkWave.current = null;
@@ -798,17 +1181,27 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
     score.current = 0;
     barkCooldown.current = 0;
     treat.current = null;
+    tennisBall.current = null;
     rabbit.current = null;
+    mailman.current = null;
+    bird.current = null;
+    mailmanHasSpawned.current = false;
     powerUpActive.current = false;
     powerUpEndTime.current = 0;
+    zoomiesActive.current = false;
+    zoomiesEndTime.current = 0;
     setDisplayPowerUpTimeLeft(0);
+    setDisplayZoomiesTimeLeft(0);
     setDisplayScore(0);
     setDisplayBarkCooldown(0);
     lastSpawnTime.current = performance.now();
     lastUpdateTime.current = performance.now();
     gameStartTime.current = performance.now();
     lastTreatSpawnAttempt.current = performance.now();
+    lastTennisBallSpawnAttempt.current = performance.now();
     lastRabbitSpawnAttempt.current = performance.now();
+    lastMailmanSpawnAttempt.current = performance.now();
+    lastBirdSpawnAttempt.current = performance.now();
     keysPressed.current = {};
     barkTriggered.current = false;
     joystickVector.current = { x: 0, y: 0};
@@ -868,6 +1261,8 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
   
   const isPowerUpActive = displayPowerUpTimeLeft > 0;
   const powerUpProgress = isPowerUpActive ? (displayPowerUpTimeLeft / POWER_UP_DURATION) * 100 : 0;
+  
+  const isZoomiesActive = displayZoomiesTimeLeft > 0;
 
   return (
     <>
@@ -909,7 +1304,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
                 </div>
             </div>
             ) : (
-              <div className="relative w-full h-10 bg-black/20 backdrop-blur-sm rounded-full p-1 shadow-lg border border-white/10">
+              <div className={`relative w-full h-10 bg-black/20 backdrop-blur-sm rounded-full p-1 shadow-lg transition-all ${isZoomiesActive ? 'border-2 border-red-500 animate-pulse' : 'border border-white/10'}`}>
                 <div className="w-full h-full bg-gray-800/50 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-100 ease-linear"
@@ -917,7 +1312,10 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState }) => {
                   />
                 </div>
                 <div className="absolute inset-0 flex items-center justify-center text-white font-bold tracking-wider text-sm" style={{textShadow: '1px 1px 2px rgba(0,0,0,0.7)'}}>
-                  {barkProgress >= 100 ? 'BARK READY' : 'RECHARGING'}
+                  {isZoomiesActive 
+                    ? `ZOOMIES! (${(displayZoomiesTimeLeft / 1000).toFixed(1)}s)`
+                    : (barkProgress >= 100 ? 'BARK READY' : 'RECHARGING')
+                  }
                 </div>
               </div>
             )}
