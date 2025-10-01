@@ -7,7 +7,7 @@ export const PLAYER_SPEED_BOOST = 1.05; // 5% faster
 
 export const SQUIRREL_SIZE = 25;
 export const SQUIRREL_SPEED = 0.09; // pixels per millisecond
-export const SQUIRREL_SPAWN_INTERVAL_INITIAL = 2000; // start spawning every 2 seconds
+export const SQUIRREL_SPAWN_INTERVAL_INITIAL = 3000; // start spawning every 3 seconds
 export const SQUIRREL_SPAWN_INTERVAL_MIN = 450;     // ramp up to spawning every 0.45 seconds
 export const DIFFICULTY_RAMP_DURATION = 360000;      // 360 seconds (6 minutes) to reach max difficulty
 
@@ -28,9 +28,9 @@ export const MAILMAN_POINTS = 10;
 
 export const BIRD_SIZE = 30;
 export const BIRD_SWOOP_SPEED = 0.22; // pixels per millisecond
-export const BIRD_SPAWN_START_TIME = 30000; // 30 seconds in
-export const BIRD_SPAWN_INTERVAL_INITIAL = 15000; // Try to spawn every 15 seconds initially
-export const BIRD_SPAWN_INTERVAL_MIN = 8000;      // Ramp up to spawning every 8 seconds
+export const BIRD_SPAWN_START_TIME = 15000; // 15 seconds in
+export const BIRD_SPAWN_INTERVAL_INITIAL = 13000; // Try to spawn every 13 seconds initially
+export const BIRD_SPAWN_INTERVAL_MIN = 7000;      // Ramp up to spawning every 7 seconds
 export const BIRD_SPAWN_CHANCE = 0.5; // 50% chance
 export const BIRD_PERCH_TIME_MIN = 6000; // 6 seconds
 export const BIRD_PERCH_TIME_MAX = 9000; // 9 seconds

@@ -335,8 +335,12 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
     if (bird.current) {
         const b = bird.current;
         const bobOffset = b.state === 'perched' ? Math.sin(animationTime.current / 300) * 2 : 0;
+        const birdRenderX = b.position.x;
+        const birdRenderY = b.position.y + bobOffset;
+
+        // Draw bird emoji FIRST
         ctx.save();
-        ctx.translate(b.position.x, b.position.y + bobOffset);
+        ctx.translate(birdRenderX, birdRenderY);
         if (b.state === 'swooping') {
             // Rotate the bird to face its direction of movement.
             // Add PI/2 because the emoji faces upwards when angle is 0.
@@ -347,6 +351,21 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
         ctx.textBaseline = 'middle';
         ctx.fillText('🐦‍⬛', 0, 0);
         ctx.restore();
+
+        // Now draw the pulsating aura BEHIND the bird
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-over';
+        
+        const auraPulse = Math.sin(animationTime.current / 200) * 3; // Pulsates radius by 3px
+        const auraRadius = (BIRD_SIZE / 2) + 5 + auraPulse;
+        const auraOpacity = 0.3 + Math.sin(animationTime.current / 200) * 0.15; // Pulsates opacity
+
+        ctx.fillStyle = `rgba(255, 255, 224, ${auraOpacity})`; // Light yellow
+        ctx.beginPath();
+        ctx.arc(birdRenderX, birdRenderY, auraRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore(); // Resets globalCompositeOperation
     }
 
     // Draw Particles
@@ -689,7 +708,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
             const spawnOnLeft = Math.random() > 0.5;
             const y = Math.random() * (GAME_HEIGHT - 40) + 20; // Avoid very top/bottom
             const x = spawnOnLeft ? -RABBIT_SIZE / 2 : GAME_WIDTH + RABBIT_SIZE / 2;
-            const targetX = spawnOnLeft ? GAME_WIDTH + RABBIT_SIZE / 2 : -RABBIT_SIZE / 2;
+            const targetX = spawnOnLeft ? GAME_WIDTH + RABBIT_SIZE * 2 : -RABBIT_SIZE * 2;
             rabbit.current = {
                 id: now,
                 position: { x, y },
