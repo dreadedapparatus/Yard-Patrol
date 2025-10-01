@@ -29,18 +29,25 @@ export const MAILMAN_POINTS = 10;
 export const BIRD_SIZE = 30;
 export const BIRD_SWOOP_SPEED = 0.22; // pixels per millisecond
 export const BIRD_SPAWN_START_TIME = 15000; // 15 seconds in
-export const BIRD_SPAWN_INTERVAL_INITIAL = 13000; // Try to spawn every 13 seconds initially
-export const BIRD_SPAWN_INTERVAL_MIN = 7000;      // Ramp up to spawning every 7 seconds
+export const BIRD_SPAWN_INTERVAL_INITIAL = 8000; // Try to spawn every 8 seconds initially
+export const BIRD_SPAWN_INTERVAL_MIN = 4000;      // Ramp up to spawning every 4 seconds
 export const BIRD_SPAWN_CHANCE = 0.5; // 50% chance
 export const BIRD_PERCH_TIME_MIN = 6000; // 6 seconds
 export const BIRD_PERCH_TIME_MAX = 9000; // 9 seconds
 export const BIRD_POINTS = 3;
 
+export const SKUNK_SIZE = 30;
+export const SKUNK_SPEED = 0.04; // Slow wander
+export const SKUNK_SPAWN_START_TIME = 30000; // 30 seconds
+export const SKUNK_SPAWN_INTERVAL = 45000; // Try to spawn every 45s, makes it rare
+export const SKUNK_SPAWN_CHANCE = 0.35; // 35% chance when interval hits
+export const SKUNK_SPRAY_RADIUS = 180; // Radius where bark triggers game over
+
 export const HOUSE_SIZE = 135;
 export const HOUSE_X = GAME_WIDTH / 2 - HOUSE_SIZE / 2;
 export const HOUSE_Y = GAME_HEIGHT / 2 - HOUSE_SIZE / 2;
 
-export const BARK_COOLDOWN = 5000; // 5 seconds in ms
+export const BARK_COOLDOWN = 4500; // 4.5 seconds in ms
 export const BARK_RADIUS = 200; // pixels, for the new regular bark
 
 export const DOG_SCARE_RADIUS = 100; // pixels

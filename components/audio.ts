@@ -297,3 +297,40 @@ export const playZoomiesSound = () => {
     osc.start(now);
     osc.stop(now + 0.3);
 };
+
+/**
+ * Plays a "hissing" spray sound for the skunk game over.
+ * Uses filtered white noise.
+ */
+export const playSkunkSpraySound = () => {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const duration = 0.4;
+
+    // White noise for the "spray"
+    const noise = ctx.createBufferSource();
+    const bufferSize = ctx.sampleRate * duration;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+    }
+    noise.buffer = buffer;
+    
+    const bandpass = ctx.createBiquadFilter();
+    bandpass.type = 'bandpass';
+    bandpass.frequency.value = 1500;
+    bandpass.Q.value = 0.8;
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0, now);
+    noiseGain.gain.linearRampToValueAtTime(0.4, now + 0.02); // Sharp attack
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    noise.connect(bandpass).connect(noiseGain).connect(ctx.destination);
+    noise.start(now);
+    noise.stop(now + duration);
+};

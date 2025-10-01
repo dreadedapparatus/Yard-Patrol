@@ -66,3 +66,11 @@ export interface Bird {
   targetTreeIndex: number;
   swoopAngle: number;
 }
+
+export interface Skunk {
+  id: number;
+  position: Vector2D;
+  spawnTime: number;
+  direction: 'left' | 'right';
+  targetPosition: Vector2D;
+}

@@ -12,7 +12,7 @@ function App() {
   const [gameState, setGameState] = useState<GameState>('menu');
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
-  const [gameOverReason, setGameOverReason] = useState<'squirrel' | 'mailman' | 'bird'>('squirrel');
+  const [gameOverReason, setGameOverReason] = useState<'squirrel' | 'mailman' | 'bird' | 'skunk'>('squirrel');
   const [scale, setScale] = useState(1);
   const [isHelpVisible, setIsHelpVisible] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -104,7 +104,7 @@ function App() {
     enterFullscreen();
   }, [enterFullscreen]);
 
-  const handleGameOver = useCallback((finalScore: number, reason: 'squirrel' | 'mailman' | 'bird' = 'squirrel') => {
+  const handleGameOver = useCallback((finalScore: number, reason: 'squirrel' | 'mailman' | 'bird' | 'skunk' = 'squirrel') => {
     setScore(finalScore);
     setGameOverReason(reason);
     if (finalScore > highScore) {

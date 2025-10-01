@@ -7,7 +7,7 @@ interface GameOverProps {
   onHelp: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
-  reason: 'squirrel' | 'mailman' | 'bird';
+  reason: 'squirrel' | 'mailman' | 'bird' | 'skunk';
   isTouchDevice: boolean;
 }
 
@@ -27,11 +27,18 @@ const UnmuteIcon = () => (
     </svg>
 );
 
-const failureMessages = [
+const regularFailureMessages = [
     "You failed your owners.",
     "No treats for you!",
     "Bad dog!"
 ];
+
+const skunkFailureMessages = [
+    "Beware the skunk!",
+    "You got Skunked!",
+    "Bath time!"
+];
+
 
 const GameOver: React.FC<GameOverProps> = ({ score, onRestart, highScore, onHelp, isMuted, onToggleMute, reason, isTouchDevice }) => {
   const isNewHighScore = score > 0 && score === highScore;
@@ -47,12 +54,16 @@ const GameOver: React.FC<GameOverProps> = ({ score, onRestart, highScore, onHelp
     window.addEventListener('keydown', handleKeyDown);
     
     // Set a random failure message when the component mounts
-    setSubtitle(failureMessages[Math.floor(Math.random() * failureMessages.length)]);
+    if (reason === 'skunk') {
+        setSubtitle(skunkFailureMessages[Math.floor(Math.random() * skunkFailureMessages.length)]);
+    } else {
+        setSubtitle(regularFailureMessages[Math.floor(Math.random() * regularFailureMessages.length)]);
+    }
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [onRestart]);
+  }, [onRestart, reason]);
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-center bg-red-900/50 backdrop-blur-md p-4 md:p-8 text-center font-sans select-none">

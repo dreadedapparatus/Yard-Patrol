@@ -1,8 +1,8 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import type { Squirrel, Vector2D, GameState, Particle, Tree, Treat, Rabbit, Mailman, Bird, TennisBall } from '../types';
+import type { Squirrel, Vector2D, GameState, Particle, Tree, Treat, Rabbit, Mailman, Bird, TennisBall, Skunk } from '../types';
 import Joystick from './Joystick';
 import BarkButton from './BarkButton';
-import { playBarkSound, playPowerUpSound, playSquirrelLaughSound, playSquirrelCatchSound, playMailmanCatchSound, playBirdScareSound, playZoomiesSound } from './audio';
+import { playBarkSound, playPowerUpSound, playSquirrelLaughSound, playSquirrelCatchSound, playMailmanCatchSound, playBirdScareSound, playZoomiesSound, playSkunkSpraySound } from './audio';
 import {
   GAME_WIDTH,
   GAME_HEIGHT,
@@ -53,11 +53,17 @@ import {
   TENNIS_BALL_SPAWN_INTERVAL,
   ZOOMIES_DURATION,
   ZOOMIES_SPEED_BOOST,
+  SKUNK_SIZE,
+  SKUNK_SPEED,
+  SKUNK_SPAWN_START_TIME,
+  SKUNK_SPAWN_INTERVAL,
+  SKUNK_SPAWN_CHANCE,
+  SKUNK_SPRAY_RADIUS,
 } from '../constants';
 
 
 interface GameProps {
-  onGameOver: (score: number, reason: 'squirrel' | 'mailman' | 'bird') => void;
+  onGameOver: (score: number, reason: 'squirrel' | 'mailman' | 'bird' | 'skunk') => void;
   gameState: GameState;
   isTouchDevice: boolean;
 }
@@ -90,6 +96,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
   const lastRabbitSpawnAttempt = useRef<number>(performance.now());
   const lastMailmanSpawnAttempt = useRef<number>(performance.now());
   const lastBirdSpawnAttempt = useRef<number>(performance.now());
+  const lastSkunkSpawnAttempt = useRef<number>(performance.now());
 
 
   // Game State Refs
@@ -109,11 +116,15 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
   const rabbit = useRef<Rabbit | null>(null);
   const mailman = useRef<Mailman | null>(null);
   const bird = useRef<Bird | null>(null);
+  const skunk = useRef<Skunk | null>(null);
   const mailmanHasSpawned = useRef<boolean>(false);
   const powerUpActive = useRef<boolean>(false);
   const powerUpEndTime = useRef<number>(0);
   const zoomiesActive = useRef<boolean>(false);
   const zoomiesEndTime = useRef<number>(0);
+  const gameOverAnimating = useRef<boolean>(false);
+  const gameOverAnimationEnd = useRef<number>(0);
+  const gameOverReasonRef = useRef<'squirrel' | 'mailman' | 'bird' | 'skunk' | null>(null);
 
 
   // Visual Effects Refs
@@ -154,6 +165,25 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
         });
     }
   }, []);
+
+  const createSkunkSprayBurst = useCallback((position: Vector2D) => {
+    for (let i = 0; i < 40; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 2 + 1.5;
+        const life = Math.random() * 1200 + 800; // Linger for a bit
+        particles.current.push({
+            position: { ...position },
+            velocity: { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed },
+            life: life,
+            initialLife: life,
+            size: Math.random() * 12 + 8,
+            color: `rgba(120, 220, 120, ${Math.random() * 0.5 + 0.4})`, // Sickly green
+            rotation: 0,
+            rotationSpeed: 0,
+            text: '•',
+        });
+    }
+  }, []);
   
   const checkCircleRectCollision = useCallback((circlePos: Vector2D, circleRadius: number, rect: {x: number, y: number, width: number, height: number}) => {
       const closestX = Math.max(rect.x, Math.min(circlePos.x, rect.x + rect.width));
@@ -180,6 +210,29 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
     }
     return false;
   }, [checkCircleRectCollision]);
+
+  const triggerGameOver = useCallback((reason: 'squirrel' | 'mailman' | 'bird' | 'skunk', animationDuration: number = 500) => {
+    if (gameOverHandled.current) return;
+    gameOverHandled.current = true;
+
+    gameOverAnimating.current = true;
+    gameOverAnimationEnd.current = performance.now() + animationDuration;
+    gameOverReasonRef.current = reason;
+
+    if (reason === 'skunk') {
+        if (skunk.current) {
+            createSkunkSprayBurst(skunk.current.position);
+            createSkunkSprayBurst(playerPos.current);
+        }
+        playSkunkSpraySound();
+        screenShake.current = { magnitude: 25, duration: 600, startTime: performance.now() };
+        gameOverFlashOpacity.current = 0.7;
+    } else {
+        playSquirrelLaughSound();
+        screenShake.current = { magnitude: 20, duration: 500, startTime: performance.now() };
+        gameOverFlashOpacity.current = 0.6;
+    }
+  }, [createSkunkSprayBurst]);
 
 
   const draw = useCallback(() => {
@@ -330,6 +383,21 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
         ctx.fillText('👮‍♂️', 0, 0); // Police officer emoji
         ctx.restore();
     }
+    
+    // Draw Skunk
+    if (skunk.current) {
+        const bobOffset = Math.sin(animationTime.current / 250) * 2;
+        ctx.save();
+        ctx.translate(skunk.current.position.x, skunk.current.position.y + bobOffset);
+        if (skunk.current.direction === 'right') {
+            ctx.scale(-1, 1);
+        }
+        ctx.font = `${SKUNK_SIZE}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🦨', 0, 0);
+        ctx.restore();
+    }
 
     // Draw Bird
     if (bird.current) {
@@ -352,20 +420,22 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
         ctx.fillText('🐦‍⬛', 0, 0);
         ctx.restore();
 
-        // Now draw the pulsating aura BEHIND the bird
-        ctx.save();
-        ctx.globalCompositeOperation = 'destination-over';
-        
-        const auraPulse = Math.sin(animationTime.current / 200) * 3; // Pulsates radius by 3px
-        const auraRadius = (BIRD_SIZE / 2) + 5 + auraPulse;
-        const auraOpacity = 0.3 + Math.sin(animationTime.current / 200) * 0.15; // Pulsates opacity
+        // Now draw the pulsating aura BEHIND the bird, only when perched
+        if (b.state === 'perched') {
+            ctx.save();
+            ctx.globalCompositeOperation = 'destination-over';
+            
+            const auraPulse = Math.sin(animationTime.current / 200) * 3; // Pulsates radius by 3px
+            const auraRadius = (BIRD_SIZE / 2) + 5 + auraPulse;
+            const auraOpacity = 0.3 + Math.sin(animationTime.current / 200) * 0.15; // Pulsates opacity
 
-        ctx.fillStyle = `rgba(255, 255, 224, ${auraOpacity})`; // Light yellow
-        ctx.beginPath();
-        ctx.arc(birdRenderX, birdRenderY, auraRadius, 0, Math.PI * 2);
-        ctx.fill();
+            ctx.fillStyle = `rgba(255, 0, 0, ${auraOpacity})`; // Red color
+            ctx.beginPath();
+            ctx.arc(birdRenderX, birdRenderY, auraRadius, 0, Math.PI * 2);
+            ctx.fill();
 
-        ctx.restore(); // Resets globalCompositeOperation
+            ctx.restore(); // Resets globalCompositeOperation
+        }
     }
 
     // Draw Particles
@@ -411,6 +481,28 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
 
   const update = useCallback((deltaTime: number) => {
     const now = performance.now();
+
+    if (gameOverAnimating.current) {
+        if (now > gameOverAnimationEnd.current) {
+            gameOverAnimating.current = false;
+            if (gameOverReasonRef.current) {
+              onGameOver(score.current, gameOverReasonRef.current);
+            }
+        }
+        // Still update particles and flash while game over animation plays
+        particles.current.forEach(p => {
+            p.position.x += p.velocity.x;
+            p.position.y += p.velocity.y;
+            p.life -= deltaTime;
+            p.rotation += p.rotationSpeed;
+        });
+        particles.current = particles.current.filter(p => p.life > 0);
+
+        if (gameOverFlashOpacity.current > 0) {
+            gameOverFlashOpacity.current -= deltaTime / 1000;
+        }
+        return; // Skip rest of game logic
+    }
     
     // Update Power-up states
     if (powerUpActive.current && now > powerUpEndTime.current) {
@@ -434,6 +526,17 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
 
     // Handle Bark
     if (barkTriggered.current && (barkCooldown.current <= 0 || powerUpActive.current)) {
+        // --- SKUNK CHECK ---
+        // This is the highest priority. If you bark near a skunk, the game ends immediately.
+        if (skunk.current) {
+            const distToSkunk = Math.sqrt(Math.pow(playerPos.current.x - skunk.current.position.x, 2) + Math.pow(playerPos.current.y - skunk.current.position.y, 2));
+            if (distToSkunk < SKUNK_SPRAY_RADIUS) {
+                triggerGameOver('skunk', 1200);
+                barkTriggered.current = false; // Consume trigger
+                return; // Stop processing the bark
+            }
+        }
+
         if (!powerUpActive.current) {
             barkCooldown.current = BARK_COOLDOWN;
             setDisplayBarkCooldown(barkCooldown.current);
@@ -654,7 +757,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
         const houseCenter = { x: HOUSE_X + HOUSE_SIZE / 2, y: HOUSE_Y + HOUSE_SIZE / 2 };
 
         const spawnPaddingHorizontal = 50;
-        const spawnPaddingTop = 90; // To avoid UI elements
+        const spawnPaddingTop = 120; // To avoid UI elements
         const spawnPaddingBottom = 50;
         const spawnableWidth = GAME_WIDTH - (spawnPaddingHorizontal * 2);
         const spawnableHeight = GAME_HEIGHT - spawnPaddingTop - spawnPaddingBottom;
@@ -707,8 +810,8 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
         if (Math.random() < RABBIT_SPAWN_CHANCE) {
             const spawnOnLeft = Math.random() > 0.5;
             const y = Math.random() * (GAME_HEIGHT - 40) + 20; // Avoid very top/bottom
-            const x = spawnOnLeft ? -RABBIT_SIZE / 2 : GAME_WIDTH + RABBIT_SIZE / 2;
-            const targetX = spawnOnLeft ? GAME_WIDTH + RABBIT_SIZE * 2 : -RABBIT_SIZE * 2;
+            const x = spawnOnLeft ? -RABBIT_SIZE * 4 : GAME_WIDTH + RABBIT_SIZE * 4;
+            const targetX = spawnOnLeft ? GAME_WIDTH + RABBIT_SIZE * 4 : -RABBIT_SIZE * 4;
             rabbit.current = {
                 id: now,
                 position: { x, y },
@@ -762,13 +865,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
         const inRoof = x > houseRoof.x && x < houseRoof.x + houseRoof.width && y > houseRoof.y && y < houseRoof.y + houseRoof.height;
 
         if (inBase || inRoof) {
-            if (!gameOverHandled.current) {
-                gameOverHandled.current = true;
-                playSquirrelLaughSound();
-                screenShake.current = { magnitude: 20, duration: 500, startTime: performance.now() };
-                gameOverFlashOpacity.current = 0.6;
-                onGameOver(score.current, 'squirrel');
-            }
+            triggerGameOver('squirrel');
             return;
         }
 
@@ -958,9 +1055,25 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
             totalMoveX = (targetDx / targetDist);
             totalMoveY = (targetDy / targetDist);
         } else { // 'evading' state
-            // Move directly away from the player
-            totalMoveX = (pDistX / playerDist);
-            totalMoveY = (pDistY / playerDist);
+            // Move directly away from the player, but avoid getting stuck at the bottom.
+            totalMoveX = pDistX;
+            totalMoveY = pDistY;
+
+            const bottomBuffer = MAILMAN_SIZE;
+            if (mm.position.y >= GAME_HEIGHT - bottomBuffer && totalMoveY > 0) {
+                // If near the bottom edge and being pushed down, nullify downward movement
+                // and prioritize horizontal movement away from the player.
+                totalMoveY = 0;
+                // If there's not much horizontal push, create one.
+                if (Math.abs(totalMoveX) < 1) {
+                    totalMoveX = (mm.position.x > GAME_WIDTH / 2) ? 1 : -1;
+                }
+            }
+
+            // Normalize the final vector before applying speed
+            const moveMagnitude = Math.sqrt(totalMoveX * totalMoveX + totalMoveY * totalMoveY) || 1;
+            totalMoveX /= moveMagnitude;
+            totalMoveY /= moveMagnitude;
         }
         
         const moveDist = Math.sqrt(totalMoveX * totalMoveX + totalMoveY * totalMoveY);
@@ -982,8 +1095,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
         
         const hasEscaped = mm.position.x < -MAILMAN_SIZE / 2 || 
                            mm.position.x > GAME_WIDTH + MAILMAN_SIZE / 2 ||
-                           mm.position.y < -MAILMAN_SIZE / 2 ||
-                           mm.position.y > GAME_HEIGHT + MAILMAN_SIZE / 2;
+                           mm.position.y < -MAILMAN_SIZE / 2;
 
         // Game over only happens if he is still in the 'approaching' state.
         const reachedHouse = mm.state === 'approaching' && mm.position.y <= mm.targetPosition.y;
@@ -1009,13 +1121,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
         } else if (hasEscaped) {
              mailman.current = null;
         } else if (reachedHouse) {
-            if (!gameOverHandled.current) {
-                gameOverHandled.current = true;
-                playSquirrelLaughSound();
-                screenShake.current = { magnitude: 20, duration: 500, startTime: performance.now() };
-                gameOverFlashOpacity.current = 0.6;
-                onGameOver(score.current, 'mailman');
-            }
+            triggerGameOver('mailman');
         }
     }
 
@@ -1067,14 +1173,71 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
             const inRoof = checkCircleRectCollision(b.position, BIRD_SIZE / 2, houseRoof);
 
             if (inBase || inRoof) {
-                if (!gameOverHandled.current) {
-                    gameOverHandled.current = true;
-                    playSquirrelLaughSound(); // Re-use generic failure sound
-                    screenShake.current = { magnitude: 20, duration: 500, startTime: performance.now() };
-                    gameOverFlashOpacity.current = 0.6;
-                    onGameOver(score.current, 'bird');
-                }
+                triggerGameOver('bird');
             }
+        }
+    }
+
+    // Skunk Spawning
+    const canSpawnSkunk = now - gameStartTime.current > SKUNK_SPAWN_START_TIME;
+    if (!skunk.current && canSpawnSkunk && now - lastSkunkSpawnAttempt.current > SKUNK_SPAWN_INTERVAL) {
+        lastSkunkSpawnAttempt.current = now;
+        if (Math.random() < SKUNK_SPAWN_CHANCE) {
+            const edge = Math.floor(Math.random() * 4);
+            let x, y;
+            if (edge === 0) { x = Math.random() * GAME_WIDTH; y = -SKUNK_SIZE; } 
+            else if (edge === 1) { x = GAME_WIDTH + SKUNK_SIZE; y = Math.random() * GAME_HEIGHT; }
+            else if (edge === 2) { x = Math.random() * GAME_WIDTH; y = GAME_HEIGHT + SKUNK_SIZE; }
+            else { x = -SKUNK_SIZE; y = Math.random() * GAME_HEIGHT; }
+            
+            skunk.current = {
+                id: now,
+                position: { x, y },
+                spawnTime: now,
+                direction: 'left',
+                targetPosition: { x: Math.random() * GAME_WIDTH, y: Math.random() * GAME_HEIGHT }, // Start wandering
+            };
+        }
+    }
+    
+    // Skunk Movement and Collision
+    if (skunk.current) {
+        const sk = skunk.current;
+
+        // --- WANDERING MOVEMENT ---
+        const distToTarget = Math.sqrt(Math.pow(sk.position.x - sk.targetPosition.x, 2) + Math.pow(sk.position.y - sk.targetPosition.y, 2));
+
+        if (distToTarget < 20) { // Reached target, find a new one
+            let newX, newY, validPosition;
+            let attempts = 0;
+            const padding = 50; // Keep away from edges
+            do {
+                newX = Math.random() * (GAME_WIDTH - padding * 2) + padding;
+                newY = Math.random() * (GAME_HEIGHT - padding * 2) + padding;
+                validPosition = !checkEntityCollision({ x: newX, y: newY }, SKUNK_SIZE / 2);
+                attempts++;
+            } while (!validPosition && attempts < 20);
+            
+            if (validPosition) {
+                sk.targetPosition = { x: newX, y: newY };
+            }
+        } else {
+            const targetDx = sk.targetPosition.x - sk.position.x;
+            const targetDy = sk.targetPosition.y - sk.position.y;
+            const targetDist = Math.sqrt(targetDx * targetDx + targetDy * targetDy) || 1;
+            const moveX = (targetDx / targetDist) * SKUNK_SPEED * deltaTime;
+            const moveY = (targetDy / targetDist) * SKUNK_SPEED * deltaTime;
+            sk.position.x += moveX;
+            sk.position.y += moveY;
+            if (moveX > 0) sk.direction = 'right';
+            else if (moveX < 0) sk.direction = 'left';
+        }
+
+        // --- GAME OVER: TOUCHING SKUNK ---
+        const skunkVsPlayerDx = playerPos.current.x - sk.position.x;
+        const skunkVsPlayerDy = playerPos.current.y - sk.position.y;
+        if (Math.sqrt(skunkVsPlayerDx*skunkVsPlayerDx + skunkVsPlayerDy*skunkVsPlayerDy) < (PLAYER_SIZE / 2 + SKUNK_SIZE / 2)) {
+            triggerGameOver('skunk', 1200);
         }
     }
     
@@ -1092,7 +1255,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
         gameOverFlashOpacity.current -= deltaTime / 1000;
     }
 
-  }, [onGameOver, createPoofEffect, checkEntityCollision, checkCircleRectCollision]);
+  }, [onGameOver, createPoofEffect, checkEntityCollision, checkCircleRectCollision, triggerGameOver]);
 
   const gameLoop = useCallback(() => {
     const now = performance.now();
@@ -1115,7 +1278,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
     
     // Define a wider safe spawn area, accounting for specific control zones later.
     const spawnPaddingHorizontal = 40; // Basic edge padding
-    const spawnPaddingTop = 90; // Increased to avoid score/bark UI
+    const spawnPaddingTop = 120; // Increased to avoid score/bark UI, especially for birds on trees
     const spawnPaddingBottom = 40;
 
     const safeArea = {
@@ -1211,6 +1374,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
     rabbit.current = null;
     mailman.current = null;
     bird.current = null;
+    skunk.current = null;
     mailmanHasSpawned.current = false;
     powerUpActive.current = false;
     powerUpEndTime.current = 0;
@@ -1228,10 +1392,14 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
     lastRabbitSpawnAttempt.current = performance.now();
     lastMailmanSpawnAttempt.current = performance.now();
     lastBirdSpawnAttempt.current = performance.now();
+    lastSkunkSpawnAttempt.current = performance.now();
     keysPressed.current = {};
     barkTriggered.current = false;
     joystickVector.current = { x: 0, y: 0};
     gameOverHandled.current = false;
+    gameOverAnimating.current = false;
+    gameOverAnimationEnd.current = 0;
+    gameOverReasonRef.current = null;
   }, []);
 
   useEffect(() => {
