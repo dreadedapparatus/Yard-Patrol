@@ -59,6 +59,10 @@ import {
   SKUNK_SPAWN_INTERVAL,
   SKUNK_SPAWN_CHANCE,
   SKUNK_SPRAY_RADIUS,
+  SKUNK_WANDER_TIME_MAX,
+  SKUNK_WANDER_TIME_MIN,
+  SQUIRREL_DIFFICULTY_SCORE_THRESHOLD,
+  SQUIRREL_DIFFICULTY_TIME_BOOST,
 } from '../constants';
 
 
@@ -109,6 +113,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
   const joystickVector = useRef<Vector2D>({ x: 0, y: 0 });
   const gameOverHandled = useRef<boolean>(false);
   const score = useRef(0);
+  const hasReachedScoreThreshold = useRef<boolean>(false);
   const barkCooldown = useRef(0);
   const scenery = useRef<{ trees: Tree[] }>({ trees: [] });
   const treat = useRef<Treat | null>(null);
@@ -138,6 +143,14 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
   const [displayBarkCooldown, setDisplayBarkCooldown] = useState(0);
   const [displayPowerUpTimeLeft, setDisplayPowerUpTimeLeft] = useState(0);
   const [displayZoomiesTimeLeft, setDisplayZoomiesTimeLeft] = useState(0);
+
+  const addScore = useCallback((points: number) => {
+    score.current += points;
+    setDisplayScore(score.current);
+    if (!hasReachedScoreThreshold.current && score.current >= SQUIRREL_DIFFICULTY_SCORE_THRESHOLD) {
+        hasReachedScoreThreshold.current = true;
+    }
+  }, []);
 
   const handleJoystickMove = useCallback((vector: Vector2D) => {
     joystickVector.current = vector;
@@ -587,7 +600,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
 
             if (numEnemiesScared > 1) { // COMBO!
                 const totalPoints = basePoints * numEnemiesScared;
-                score.current += totalPoints;
+                addScore(totalPoints);
                 playMailmanCatchSound(); // Use a more rewarding sound for combos
 
                 const avgPosition = scaredEnemies.reduce((acc, enemy) => ({
@@ -611,7 +624,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
                 });
             } else { // No combo, just one enemy
                 const totalPoints = basePoints;
-                score.current += totalPoints;
+                addScore(totalPoints);
 
                 const enemy = scaredEnemies[0];
                 const life = 1000;
@@ -632,8 +645,6 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
         if (birdScared) {
             bird.current = null;
         }
-
-        setDisplayScore(score.current);
     }
     barkTriggered.current = false; // Consume trigger
 
@@ -728,7 +739,10 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
     }
 
     // Squirrel Spawning
-    const elapsedTime = now - gameStartTime.current;
+    let elapsedTime = now - gameStartTime.current;
+    if (hasReachedScoreThreshold.current) {
+        elapsedTime += SQUIRREL_DIFFICULTY_TIME_BOOST;
+    }
     const difficultyProgress = Math.min(1, elapsedTime / DIFFICULTY_RAMP_DURATION);
     const currentSpawnInterval = SQUIRREL_SPAWN_INTERVAL_INITIAL - (SQUIRREL_SPAWN_INTERVAL_INITIAL - SQUIRREL_SPAWN_INTERVAL_MIN) * difficultyProgress;
 
@@ -874,10 +888,22 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
         const playerDy = playerPos.current.y - squirrel.position.y;
         if (Math.sqrt(playerDx*playerDx + playerDy*playerDy) < (PLAYER_SIZE / 2 + SQUIRREL_SIZE / 2)) {
             squirrelsToRemove.push(squirrel.id);
-            score.current += 1;
-            setDisplayScore(score.current);
+            addScore(1);
             playSquirrelCatchSound();
             createPoofEffect(squirrel.position);
+            // Add particle
+            const life = 800;
+            particles.current.push({
+                position: { x: squirrel.position.x, y: squirrel.position.y },
+                velocity: { x: 0, y: -0.8 },
+                life: life,
+                initialLife: life,
+                size: 20,
+                color: '#FFFFFF',
+                rotation: 0,
+                rotationSpeed: 0,
+                text: `+1`
+            });
         }
     });
 
@@ -991,8 +1017,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
             const playerDx = playerPos.current.x - rab.position.x;
             const playerDy = playerPos.current.y - rab.position.y;
             if (Math.sqrt(playerDx*playerDx + playerDy*playerDy) < (PLAYER_SIZE / 2 + RABBIT_SIZE / 2)) {
-                score.current += RABBIT_POINTS;
-                setDisplayScore(score.current);
+                addScore(RABBIT_POINTS);
                 createPoofEffect(rab.position);
                 // Create a "+5" text particle
                 const life = 1000;
@@ -1101,8 +1126,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
         const reachedHouse = mm.state === 'approaching' && mm.position.y <= mm.targetPosition.y;
 
         if (isCaught) {
-            score.current += MAILMAN_POINTS;
-            setDisplayScore(score.current);
+            addScore(MAILMAN_POINTS);
             playMailmanCatchSound();
             createPoofEffect(mm.position);
             const life = 1000;
@@ -1190,12 +1214,14 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
             else if (edge === 2) { x = Math.random() * GAME_WIDTH; y = GAME_HEIGHT + SKUNK_SIZE; }
             else { x = -SKUNK_SIZE; y = Math.random() * GAME_HEIGHT; }
             
+            const wanderDuration = Math.random() * (SKUNK_WANDER_TIME_MAX - SKUNK_WANDER_TIME_MIN) + SKUNK_WANDER_TIME_MIN;
             skunk.current = {
                 id: now,
                 position: { x, y },
                 spawnTime: now,
                 direction: 'left',
                 targetPosition: { x: Math.random() * GAME_WIDTH, y: Math.random() * GAME_HEIGHT }, // Start wandering
+                despawnTime: now + wanderDuration,
             };
         }
     }
@@ -1203,41 +1229,105 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
     // Skunk Movement and Collision
     if (skunk.current) {
         const sk = skunk.current;
-
-        // --- WANDERING MOVEMENT ---
-        const distToTarget = Math.sqrt(Math.pow(sk.position.x - sk.targetPosition.x, 2) + Math.pow(sk.position.y - sk.targetPosition.y, 2));
-
-        if (distToTarget < 20) { // Reached target, find a new one
-            let newX, newY, validPosition;
-            let attempts = 0;
-            const padding = 50; // Keep away from edges
-            do {
-                newX = Math.random() * (GAME_WIDTH - padding * 2) + padding;
-                newY = Math.random() * (GAME_HEIGHT - padding * 2) + padding;
-                validPosition = !checkEntityCollision({ x: newX, y: newY }, SKUNK_SIZE / 2);
-                attempts++;
-            } while (!validPosition && attempts < 20);
-            
-            if (validPosition) {
-                sk.targetPosition = { x: newX, y: newY };
-            }
+        // Check if skunk has moved off-screen and should be removed
+        if (sk.position.x < -SKUNK_SIZE * 2 || sk.position.x > GAME_WIDTH + SKUNK_SIZE * 2 || sk.position.y < -SKUNK_SIZE * 2 || sk.position.y > GAME_HEIGHT + SKUNK_SIZE * 2) {
+            skunk.current = null;
         } else {
+            // Check if it's time for the skunk to leave the screen
+            const isExiting = sk.targetPosition.x < 0 || sk.targetPosition.x > GAME_WIDTH || sk.targetPosition.y < 0 || sk.targetPosition.y > GAME_HEIGHT;
+            if (!isExiting && now > sk.despawnTime) {
+                const distToTop = sk.position.y;
+                const distToBottom = GAME_HEIGHT - sk.position.y;
+                const distToLeft = sk.position.x;
+                const distToRight = GAME_WIDTH - sk.position.x;
+                const minDist = Math.min(distToTop, distToBottom, distToLeft, distToRight);
+                const buffer = 100;
+
+                if (minDist === distToTop) sk.targetPosition = { x: sk.position.x, y: -buffer };
+                else if (minDist === distToBottom) sk.targetPosition = { x: sk.position.x, y: GAME_HEIGHT + buffer };
+                else if (minDist === distToLeft) sk.targetPosition = { x: -buffer, y: sk.position.y };
+                else sk.targetPosition = { x: GAME_WIDTH + buffer, y: sk.position.y };
+            }
+
+            // --- WANDERING MOVEMENT ---
+            const distToTarget = Math.sqrt(Math.pow(sk.position.x - sk.targetPosition.x, 2) + Math.pow(sk.position.y - sk.targetPosition.y, 2));
+
+            // If not exiting, find a new target when the old one is reached
+            if (!isExiting && distToTarget < 20) {
+                let newX, newY, validPosition;
+                let attempts = 0;
+                const padding = 50; // Keep away from edges
+                do {
+                    newX = Math.random() * (GAME_WIDTH - padding * 2) + padding;
+                    newY = Math.random() * (GAME_HEIGHT - padding * 2) + padding;
+                    validPosition = !checkEntityCollision({ x: newX, y: newY }, SKUNK_SIZE / 2);
+                    attempts++;
+                } while (!validPosition && attempts < 20);
+                
+                if (validPosition) {
+                    sk.targetPosition = { x: newX, y: newY };
+                }
+            }
+
+            // --- CALCULATE MOVEMENT VECTOR WITH INFLUENCES ---
+            let totalMoveX = 0;
+            let totalMoveY = 0;
+
+            // Influence 1: Primary goal (move towards target)
             const targetDx = sk.targetPosition.x - sk.position.x;
             const targetDy = sk.targetPosition.y - sk.position.y;
-            const targetDist = Math.sqrt(targetDx * targetDx + targetDy * targetDy) || 1;
-            const moveX = (targetDx / targetDist) * SKUNK_SPEED * deltaTime;
-            const moveY = (targetDy / targetDist) * SKUNK_SPEED * deltaTime;
-            sk.position.x += moveX;
-            sk.position.y += moveY;
-            if (moveX > 0) sk.direction = 'right';
-            else if (moveX < 0) sk.direction = 'left';
-        }
+            const targetDist = Math.sqrt(targetDx*targetDx + targetDy*targetDy) || 1;
+            totalMoveX += (targetDx / targetDist);
+            totalMoveY += (targetDy / targetDist);
 
-        // --- GAME OVER: TOUCHING SKUNK ---
-        const skunkVsPlayerDx = playerPos.current.x - sk.position.x;
-        const skunkVsPlayerDy = playerPos.current.y - sk.position.y;
-        if (Math.sqrt(skunkVsPlayerDx*skunkVsPlayerDx + skunkVsPlayerDy*skunkVsPlayerDy) < (PLAYER_SIZE / 2 + SKUNK_SIZE / 2)) {
-            triggerGameOver('skunk', 1200);
+            // Influence 2: Obstacle Avoidance (Trees and House)
+            const avoidanceRadius = SKUNK_SIZE * 2.5;
+            const avoidanceStrength = 3.0;
+            
+            // Trees
+            scenery.current.trees.forEach(tree => {
+                const obsDx = sk.position.x - tree.position.x;
+                const obsDy = sk.position.y - tree.position.y;
+                const dist = Math.sqrt(obsDx * obsDx + obsDy * obsDy) || 1;
+                if (dist < avoidanceRadius) {
+                    const weight = (avoidanceRadius - dist) / avoidanceRadius;
+                    totalMoveX += (obsDx / dist) * weight * avoidanceStrength;
+                    totalMoveY += (obsDy / dist) * weight * avoidanceStrength;
+                }
+            });
+
+            // House
+            const houseAvoidanceRadius = HOUSE_SIZE * 0.7;
+            const houseDx = sk.position.x - houseCenter.x;
+            const houseDy = sk.position.y - houseCenter.y;
+            const houseDist = Math.sqrt(houseDx*houseDx + houseDy*houseDy) || 1;
+            if (houseDist < houseAvoidanceRadius) {
+                const weight = (houseAvoidanceRadius - houseDist) / houseAvoidanceRadius;
+                totalMoveX += (houseDx / houseDist) * weight * avoidanceStrength;
+                totalMoveY += (houseDy / houseDist) * weight * avoidanceStrength;
+            }
+            
+            // --- APPLY MOVEMENT ---
+            const moveDist = Math.sqrt(totalMoveX * totalMoveX + totalMoveY * totalMoveY);
+            if (moveDist > 0) {
+                const normalizedDx = totalMoveX / moveDist;
+                const normalizedDy = totalMoveY / moveDist;
+                const moveX = normalizedDx * SKUNK_SPEED * deltaTime;
+                const moveY = normalizedDy * SKUNK_SPEED * deltaTime;
+
+                sk.position.x += moveX;
+                sk.position.y += moveY;
+
+                if (moveX > 0) sk.direction = 'right';
+                else if (moveX < 0) sk.direction = 'left';
+            }
+
+            // --- GAME OVER: TOUCHING SKUNK ---
+            const skunkVsPlayerDx = playerPos.current.x - sk.position.x;
+            const skunkVsPlayerDy = playerPos.current.y - sk.position.y;
+            if (Math.sqrt(skunkVsPlayerDx*skunkVsPlayerDx + skunkVsPlayerDy*skunkVsPlayerDy) < (PLAYER_SIZE / 2 + SKUNK_SIZE / 2)) {
+                triggerGameOver('skunk', 1200);
+            }
         }
     }
     
@@ -1255,7 +1345,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
         gameOverFlashOpacity.current -= deltaTime / 1000;
     }
 
-  }, [onGameOver, createPoofEffect, checkEntityCollision, checkCircleRectCollision, triggerGameOver]);
+  }, [onGameOver, createPoofEffect, checkEntityCollision, checkCircleRectCollision, triggerGameOver, addScore]);
 
   const gameLoop = useCallback(() => {
     const now = performance.now();
@@ -1368,6 +1458,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
     gameOverFlashOpacity.current = 0;
     screenShake.current = { magnitude: 0, duration: 0, startTime: 0 };
     score.current = 0;
+    hasReachedScoreThreshold.current = false;
     barkCooldown.current = 0;
     treat.current = null;
     tennisBall.current = null;

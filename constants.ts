@@ -10,6 +10,8 @@ export const SQUIRREL_SPEED = 0.09; // pixels per millisecond
 export const SQUIRREL_SPAWN_INTERVAL_INITIAL = 3000; // start spawning every 3 seconds
 export const SQUIRREL_SPAWN_INTERVAL_MIN = 450;     // ramp up to spawning every 0.45 seconds
 export const DIFFICULTY_RAMP_DURATION = 360000;      // 360 seconds (6 minutes) to reach max difficulty
+export const SQUIRREL_DIFFICULTY_SCORE_THRESHOLD = 100;
+export const SQUIRREL_DIFFICULTY_TIME_BOOST = 60000; // 60 seconds
 
 export const RABBIT_SIZE = 30;
 export const RABBIT_SPEED = 0.20; // pixels per millisecond
@@ -39,9 +41,11 @@ export const BIRD_POINTS = 3;
 export const SKUNK_SIZE = 30;
 export const SKUNK_SPEED = 0.04; // Slow wander
 export const SKUNK_SPAWN_START_TIME = 30000; // 30 seconds
-export const SKUNK_SPAWN_INTERVAL = 45000; // Try to spawn every 45s, makes it rare
-export const SKUNK_SPAWN_CHANCE = 0.35; // 35% chance when interval hits
+export const SKUNK_SPAWN_INTERVAL = 32000; // Try to spawn every 32s
+export const SKUNK_SPAWN_CHANCE = 0.4; // 40% chance when interval hits
 export const SKUNK_SPRAY_RADIUS = 180; // Radius where bark triggers game over
+export const SKUNK_WANDER_TIME_MIN = 12000; // 12 seconds
+export const SKUNK_WANDER_TIME_MAX = 18000; // 18 seconds
 
 export const HOUSE_SIZE = 135;
 export const HOUSE_X = GAME_WIDTH / 2 - HOUSE_SIZE / 2;

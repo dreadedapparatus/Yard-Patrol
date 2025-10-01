@@ -73,4 +73,5 @@ export interface Skunk {
   spawnTime: number;
   direction: 'left' | 'right';
   targetPosition: Vector2D;
+  despawnTime: number;
 }
