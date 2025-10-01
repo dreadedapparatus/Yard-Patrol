@@ -14,7 +14,7 @@ export const DIFFICULTY_RAMP_DURATION = 360000;      // 360 seconds (6 minutes) 
 export const RABBIT_SIZE = 30;
 export const RABBIT_SPEED = 0.20; // pixels per millisecond
 export const RABBIT_SPAWN_INTERVAL = 20000; // Try to spawn every 20 seconds
-export const RABBIT_SPAWN_CHANCE = 0.3; // 30% chance when interval is met
+export const RABBIT_SPAWN_CHANCE = 0.3; // 30% chance
 export const RABBIT_POINTS = 5;
 
 export const MAILMAN_SIZE = 35;
@@ -26,7 +26,7 @@ export const MAILMAN_SPAWN_CHANCE = 0.4; // 40% chance
 export const MAILMAN_EVASION_RADIUS = 150;
 export const MAILMAN_POINTS = 10;
 
-export const BIRD_SIZE = 35;
+export const BIRD_SIZE = 30;
 export const BIRD_SWOOP_SPEED = 0.22; // pixels per millisecond
 export const BIRD_SPAWN_START_TIME = 30000; // 30 seconds in
 export const BIRD_SPAWN_INTERVAL_INITIAL = 15000; // Try to spawn every 15 seconds initially
@@ -55,6 +55,6 @@ export const TENNIS_BALL_SPAWN_INTERVAL = 28250; // Rarer than treats
 export const ZOOMIES_DURATION = 6000; // 6 seconds
 export const ZOOMIES_SPEED_BOOST = 1.3; // 30% faster
 
-export const NUM_TREES = 6;
+export const NUM_TREES = 5;
 export const TREE_SIZE = 60; // For collision
 export const MIN_TREE_DISTANCE = 120; // pixels

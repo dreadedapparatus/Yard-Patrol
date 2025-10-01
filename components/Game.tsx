@@ -633,9 +633,16 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
         let x, y, validPosition;
         let attempts = 0;
         const houseCenter = { x: HOUSE_X + HOUSE_SIZE / 2, y: HOUSE_Y + HOUSE_SIZE / 2 };
+
+        const spawnPaddingHorizontal = 50;
+        const spawnPaddingTop = 90; // To avoid UI elements
+        const spawnPaddingBottom = 50;
+        const spawnableWidth = GAME_WIDTH - (spawnPaddingHorizontal * 2);
+        const spawnableHeight = GAME_HEIGHT - spawnPaddingTop - spawnPaddingBottom;
+        
         do {
-            x = Math.random() * (GAME_WIDTH - 100) + 50;
-            y = Math.random() * (GAME_HEIGHT - 100) + 50;
+            x = Math.random() * spawnableWidth + spawnPaddingHorizontal;
+            y = Math.random() * spawnableHeight + spawnPaddingTop;
 
             const distFromHouseX = x - houseCenter.x;
             const distFromHouseY = y - houseCenter.y;
@@ -1089,7 +1096,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
     
     // Define a wider safe spawn area, accounting for specific control zones later.
     const spawnPaddingHorizontal = 40; // Basic edge padding
-    const spawnPaddingTop = 80; // Extra space to avoid score/bark UI
+    const spawnPaddingTop = 90; // Increased to avoid score/bark UI
     const spawnPaddingBottom = 40;
 
     const safeArea = {
@@ -1295,9 +1302,10 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
                <div className="relative w-full h-10 bg-black/20 backdrop-blur-sm rounded-full p-1 shadow-lg border border-yellow-300/30">
                 <div className="relative w-full h-full bg-yellow-900/50 rounded-full overflow-hidden">
                     <div
-                        className="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-yellow-300 to-amber-400 transition-transform duration-100 ease-linear"
+                        className="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-yellow-300 to-amber-400"
                         style={{
                             transform: `translateX(${(powerUpProgress - 100)}%)`,
+                            transition: `transform ${isPowerUpActive ? '0.1s' : '0s'} linear`
                         }}
                     />
                 </div>
@@ -1309,9 +1317,10 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
               <div className={`relative w-full h-10 bg-black/20 backdrop-blur-sm rounded-full p-1 shadow-lg transition-all ${isZoomiesActive ? 'border-2 border-red-500 animate-pulse' : 'border border-white/10'}`}>
                 <div className="relative w-full h-full bg-gray-800/50 rounded-full overflow-hidden">
                   <div
-                    className="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-transform duration-100 ease-linear"
+                    className="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-cyan-400 to-blue-500"
                     style={{
                         transform: `translateX(${(barkProgress - 100)}%)`,
+                        transition: `transform ${barkProgress < 100 ? '0.1s' : '0s'} linear`
                     }}
                   />
                 </div>
