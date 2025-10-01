@@ -26,7 +26,7 @@ export const MAILMAN_SPAWN_CHANCE = 0.4; // 40% chance
 export const MAILMAN_EVASION_RADIUS = 150;
 export const MAILMAN_POINTS = 10;
 
-export const BIRD_SIZE = 25;
+export const BIRD_SIZE = 35;
 export const BIRD_SWOOP_SPEED = 0.22; // pixels per millisecond
 export const BIRD_SPAWN_START_TIME = 30000; // 30 seconds in
 export const BIRD_SPAWN_INTERVAL_INITIAL = 15000; // Try to spawn every 15 seconds initially

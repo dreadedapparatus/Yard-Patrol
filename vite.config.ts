@@ -7,5 +7,5 @@ const repoName = packageJson.homepage.substring(packageJson.homepage.indexOf('.i
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: `/${repoName}/`,
+  base: `/Yard-Patrol/`,
 })
