@@ -819,7 +819,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
     }
     
     // Rabbit Spawning
-    if (!rabbit.current && now - lastRabbitSpawnAttempt.current > RABBIT_SPAWN_INTERVAL) {
+    if (!rabbit.current && !mailman.current && now - lastRabbitSpawnAttempt.current > RABBIT_SPAWN_INTERVAL) {
         lastRabbitSpawnAttempt.current = now;
         if (Math.random() < RABBIT_SPAWN_CHANCE) {
             const spawnOnLeft = Math.random() > 0.5;
@@ -1039,7 +1039,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
 
     // Mailman Spawning
     const canSpawnMailman = now - gameStartTime.current > MAILMAN_SPAWN_START_TIME;
-    if (!mailman.current && !mailmanHasSpawned.current && canSpawnMailman && now - lastMailmanSpawnAttempt.current > MAILMAN_SPAWN_INTERVAL) {
+    if (!mailman.current && !rabbit.current && !mailmanHasSpawned.current && canSpawnMailman && now - lastMailmanSpawnAttempt.current > MAILMAN_SPAWN_INTERVAL) {
         lastMailmanSpawnAttempt.current = now;
         if (Math.random() < MAILMAN_SPAWN_CHANCE) {
             mailmanHasSpawned.current = true;
@@ -1495,8 +1495,9 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-        keysPressed.current[e.key] = true;
-        if (e.key === ' ' && gameState === 'playing') {
+        const key = e.key.toLowerCase();
+        keysPressed.current[key] = true;
+        if (key === ' ' && gameState === 'playing') {
             e.preventDefault();
             if (!barkTriggered.current) { // Prevent multiple triggers per press
                barkTriggered.current = true;
@@ -1504,7 +1505,7 @@ const Game: React.FC<GameProps> = ({ onGameOver, gameState, isTouchDevice }) => 
         }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
-        keysPressed.current[e.key] = false;
+        keysPressed.current[e.key.toLowerCase()] = false;
     };
 
     window.addEventListener('keydown', handleKeyDown);
