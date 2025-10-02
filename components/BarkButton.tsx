@@ -12,7 +12,7 @@ const BarkButton: React.FC<BarkButtonProps> = ({ onBark }) => {
 
     return (
         <div
-            className="w-36 h-36 rounded-full bg-yellow-400/50 backdrop-blur-sm border-4 border-yellow-300/50 flex flex-col items-center justify-center text-white font-black shadow-lg active:scale-95 active:bg-yellow-400/80 transition-all"
+            className="w-36 h-36 rounded-full bg-yellow-400/50 backdrop-blur-sm border-4 border-yellow-300/50 flex flex-col items-center justify-center text-white font-black shadow-lg active:scale-95 active:bg-yellow-400/80 transition-all select-none"
             onTouchStart={handlePress}
             onMouseDown={handlePress} // For desktop testing
         >
