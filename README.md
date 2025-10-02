@@ -5,10 +5,10 @@
 ▶️ Play in browser: https://dreadedapparatus.github.io/Yard-Patrol/
 
 
-🐿️ Bark or catch the squirrels before they reach your house
-🐦‍⬛ Attacks your house from trees - can only be defeated by a bark
-🦨 Touching or barking at the skunk ends the game
-🐇 Catch for bonus points
+🐿️ Bark or catch the squirrels before they reach your house |
+🐦‍⬛ Attacks your house from trees - can only be defeated by a bark |
+🦨 Touching or barking at the skunk ends the game |
+🐇 Catch for bonus points |
 👮 Scare him away before he delivers the mail
 
 ## Run Locally
