@@ -20,6 +20,7 @@ function App() {
   const gameContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // This effect now only handles loading data from localStorage on initial mount.
     const storedHighScore = localStorage.getItem('yardPatrolHighScore');
     if (storedHighScore) {
       setHighScore(parseInt(storedHighScore, 10));
@@ -30,15 +31,6 @@ function App() {
         setIsMuted(muted);
         setAudioMuted(muted);
     }
-    
-    // A comprehensive check for touch support. Moved here from Game.tsx
-    const touchSupported = 
-      (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) || 
-      ('ontouchstart' in window) ||
-      (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-
-    setIsTouchDevice(!!touchSupported);
-
   }, []);
 
   // Prevent scrolling on touch devices ONLY when the game is playing
@@ -61,30 +53,41 @@ function App() {
   }, [gameState, isTouchDevice]);
 
   useLayoutEffect(() => {
-    const updateScale = () => {
+    // This effect handles both scaling and device type detection, and runs on resize.
+    const updateDisplayProperties = () => {
+      // --- Device Type Check ---
       const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+      
+      const touchSupported = 
+        (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) || 
+        ('ontouchstart' in window) ||
+        (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+      
+      // Only show touch controls if touch is supported AND it's not a desktop-sized screen.
+      // This prevents touch UI on touchscreen laptops.
+      setIsTouchDevice(!!touchSupported && !isDesktop);
 
+      // --- Scaling Logic ---
       if (isDesktop) {
         setScale(1);
-        return;
+      } else {
+        const { innerWidth, innerHeight } = window;
+        // The game container has 0.75rem (12px) padding on each side (p-3)
+        const gameTotalWidth = GAME_WIDTH + 24;
+        const gameTotalHeight = GAME_HEIGHT + 24;
+
+        const scaleX = innerWidth / gameTotalWidth;
+        const scaleY = innerHeight / gameTotalHeight;
+
+        setScale(Math.min(scaleX, scaleY));
       }
-
-      const { innerWidth, innerHeight } = window;
-      // The game container has 0.75rem (12px) padding on each side (p-3)
-      const gameTotalWidth = GAME_WIDTH + 24;
-      const gameTotalHeight = GAME_HEIGHT + 24;
-
-      const scaleX = innerWidth / gameTotalWidth;
-      const scaleY = innerHeight / gameTotalHeight;
-
-      setScale(Math.min(scaleX, scaleY));
     };
 
-    updateScale();
-    window.addEventListener('resize', updateScale);
+    updateDisplayProperties();
+    window.addEventListener('resize', updateDisplayProperties);
 
     return () => {
-      window.removeEventListener('resize', updateScale);
+      window.removeEventListener('resize', updateDisplayProperties);
     };
   }, []);
 
