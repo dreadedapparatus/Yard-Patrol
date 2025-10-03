@@ -56,21 +56,25 @@ function App() {
     // This effect handles both scaling and device type detection, and runs on resize.
     const updateDisplayProperties = () => {
       // --- Device Type Check ---
-      const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+      function isMobileOrTablet() {
+        const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+        // Checks for classical mobile user agents and iPad specifically
+        if (/android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent)) {
+            return true;
+        }
+        // Check for iPad on iPadOS 13+ that presents as a Mac
+        if (navigator.platform === 'MacIntel' && typeof navigator.maxTouchPoints === 'number' && navigator.maxTouchPoints > 1) {
+            return true;
+        }
+        return false;
+      }
       
-      const touchSupported = 
-        (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) || 
-        ('ontouchstart' in window) ||
-        (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-      
-      // Only show touch controls if touch is supported AND it's not a desktop-sized screen.
-      // This prevents touch UI on touchscreen laptops.
-      setIsTouchDevice(!!touchSupported && !isDesktop);
+      const isTouchFirstDevice = isMobileOrTablet();
+      setIsTouchDevice(isTouchFirstDevice);
 
       // --- Scaling Logic ---
-      if (isDesktop) {
-        setScale(1);
-      } else {
+      if (isTouchFirstDevice) {
+        // On mobile/tablet, scale the game to fit the screen
         const { innerWidth, innerHeight } = window;
         // The game container has 0.75rem (12px) padding on each side (p-3)
         const gameTotalWidth = GAME_WIDTH + 24;
@@ -80,6 +84,9 @@ function App() {
         const scaleY = innerHeight / gameTotalHeight;
 
         setScale(Math.min(scaleX, scaleY));
+      } else {
+        // On desktop (including touchscreen laptops), don't scale.
+        setScale(1);
       }
     };
 
