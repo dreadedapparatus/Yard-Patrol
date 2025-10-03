@@ -76,13 +76,23 @@ function App() {
       if (isTouchFirstDevice) {
         // On mobile/tablet, scale the game to fit the screen
         const { innerWidth, innerHeight } = window;
-        // The game container has 0.75rem (12px) padding on each side (p-3)
-        const gameTotalWidth = GAME_WIDTH + 24;
-        const gameTotalHeight = GAME_HEIGHT + 24;
+        
+        // Define the dimensions of the on-screen controls
+        const JOYSTICK_WIDTH = 140;
+        const BARK_BUTTON_WIDTH = 144; // w-36 in tailwind
 
-        const scaleX = innerWidth / gameTotalWidth;
-        const scaleY = innerHeight / gameTotalHeight;
+        // The controls are centered on the edge, so half of their width sticks out from the 800px game area.
+        // We calculate the total unscaled width required to show everything without clipping.
+        const totalRequiredWidth = GAME_WIDTH + (JOYSTICK_WIDTH / 2) + (BARK_BUTTON_WIDTH / 2);
+        
+        // The container holding the game has padding (p-3 = 12px top/bottom)
+        const totalRequiredHeight = GAME_HEIGHT + 24;
+        
+        // Calculate the scale factor needed to fit this total required size into the viewport
+        const scaleX = innerWidth / totalRequiredWidth;
+        const scaleY = innerHeight / totalRequiredHeight;
 
+        // Use the smaller scale factor to maintain aspect ratio and fit both dimensions
         setScale(Math.min(scaleX, scaleY));
       } else {
         // On desktop (including touchscreen laptops), don't scale.
